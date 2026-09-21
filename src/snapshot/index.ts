@@ -13,6 +13,11 @@ import { leafHash, buildTree, sortLeaves } from './merkle.js'
 import { z } from 'zod'
 
 export type TakeSnapshotOptions = {
+  /**
+   * The standard endpoint. takeSnapshot reads nothing through it: every read it makes
+   * is of a past slot, so they all go to `archiveRpc`. Kept because a caller holds both
+   * and a live-tip read may want it; the tests assert it stays untouched.
+   */
   rpc: RpcClient
   archiveRpc: RpcClient
   registry: Registry
@@ -24,7 +29,7 @@ const BlockTimeSchema = z.number().int().nullable()
 const TokenSupplySchema = z.object({ value: z.object({ amount: z.string() }) })
 
 export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot> {
-  const { rpc, archiveRpc, registry, mint, recordDate } = opts
+  const { archiveRpc, registry, mint, recordDate } = opts
 
   const asset = registry.lookup(mint)
   if (!asset) {
@@ -34,16 +39,17 @@ export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot>
     )
   }
 
-  const instant = recordDateToInstant(recordDate)
-  const slot = await pinSlot(archiveRpc, instant)
-  const blockTime = await rpc.call('getBlockTime', [slot], BlockTimeSchema)
-  if (blockTime === null) throw new Error(`Slot ${slot} has no block time; cannot anchor the multiplier`)
-
-  // Everything the snapshot is built from goes through the archive client. State at a
+  // Every read below goes through the archive client, without exception. State at a
   // past slot needs an archive by definition — and so does past *history*: a standard
   // node keeps only a rolling ledger window, so it retains neither the old signature
-  // list nor the old blocks that pinSlot and the replay walk. Saying that transaction
-  // history is not state was beside the point; a non-archival node has neither.
+  // list nor the old blocks that pinSlot and the replay walk, nor the block time of a
+  // slot whose block it has dropped. Saying that transaction history is not state was
+  // beside the point; a non-archival node has none of it.
+  const instant = recordDateToInstant(recordDate)
+  const slot = await pinSlot(archiveRpc, instant)
+  const blockTime = await archiveRpc.call('getBlockTime', [slot], BlockTimeSchema)
+  if (blockTime === null) throw new Error(`Slot ${slot} has no block time; cannot anchor the multiplier`)
+
   const multiplier = await readMultiplierAtSlot(archiveRpc, mint, slot, blockTime)
   const replayed = await replayHolders(archiveRpc, mint, slot)
 

@@ -108,6 +108,24 @@ describe('takeSnapshot detectors', () => {
     expect(snap.merkleRoot).toMatch(/^[0-9a-f]{64}$/)
     expect(snap.holders).toEqual([{ owner: 'alice', rawAmount: '1000', shares: '0.001000' }])
   })
+
+  it('reads nothing through the standard client', async () => {
+    // Every read takeSnapshot makes is of a past slot — the block time included — and
+    // a non-archival node retains none of it. The standard client is a tripwire here:
+    // touching it fails this test, instead of the snapshot failing on its first real
+    // run, which is the worst place to discover the routing.
+    const archive = { ...standardMock(), ...archiveMock({ balance: '1000', supply: '1000' }) }
+    const standardOnly = {
+      call: vi.fn(async () => { throw new Error('the standard client must not be read from') }),
+    }
+    const snap = await takeSnapshot({
+      rpc: standardOnly as never, archiveRpc: archive as never, registry, mint: MINT, recordDate: '2026-01-06',
+    })
+    expect(snap.merkleRoot).toMatch(/^[0-9a-f]{64}$/)
+    expect(standardOnly.call).not.toHaveBeenCalled()
+    // …and the block time of the pinned slot specifically came from the archive.
+    expect(archive.call).toHaveBeenCalledWith('getBlockTime', [snap.slot], expect.anything())
+  })
 })
 
 const SYSTEM_PROGRAM = '11111111111111111111111111111111'
