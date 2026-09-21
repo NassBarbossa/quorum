@@ -16,6 +16,13 @@ describe('recordDateToInstant', () => {
   it('rejects a malformed date', () => {
     expect(() => recordDateToInstant('06/15/2026')).toThrow(/YYYY-MM-DD/)
   })
+
+  it('rejects a well-formed but impossible calendar date instead of rolling it over', () => {
+    // Date.UTC would turn these into 2027-02-14 and 2027-03-01 respectively,
+    // pinning a slot weeks away from the date the filing actually named.
+    expect(() => recordDateToInstant('2026-13-45')).toThrow(/not a real calendar date/)
+    expect(() => recordDateToInstant('2027-02-29')).toThrow(/not a real calendar date/)
+  })
 })
 
 /**
