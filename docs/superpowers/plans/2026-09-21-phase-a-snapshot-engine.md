@@ -82,7 +82,9 @@ fixtures/
 
 **Interfaces:**
 - Consumes: nothing
-- Produces: `loadEnv(): Env` with `{ rpcUrl: string; archiveRpcUrl: string }`; `class RpcClient` with `call<T>(method: string, params: unknown[], schema: ZodType<T>): Promise<T>` and `callAtSlot<T>(...)`. Every later task uses `RpcClient`.
+- Produces: `loadEnv(): Env` with `{ rpcUrl: string; archiveRpcUrl: string }`; `class RpcClient` with `call<T>(method: string, params: unknown[], schema: ZodType<T>): Promise<T>` and `callHistorical<T>(method: string, params: unknown[], slot: number, schema: ZodType<T>): Promise<T>`. Every later task uses `RpcClient`.
+
+**On `callHistorical`:** `minContextSlot` is a *freshness guard* — "fail unless this node has reached slot N" — not a time machine. Reading historical state needs the archive provider's own parameter, whose exact shape is confirmed in Task 7 against the real API. So `callHistorical` takes the shape as a constructor option (`historicalParam`) with a documented default, and every caller stays unchanged when Task 7 pins it down. **Tasks 4, 5 and 7 all route through the archive client**, never the standard one: the multiplier and account ownership must be read as they stood at the snapshot slot, and a standard RPC would silently answer with head state.
 
 **Why this is Task 1:** public Solana RPC returns HTTP 429 on batched requests. This was hit during research: a 10-call JSON-RPC batch failed immediately, sequential calls with a 700ms gap succeeded for all 55 mints. The client must be sequential-with-backoff by default or every later task fails intermittently.
 
@@ -125,6 +127,32 @@ describe('RpcClient', () => {
     })
     const client = new RpcClient('https://rpc.example', { fetchImpl: fetchMock as never, baseDelayMs: 1 })
     await expect(client.call('getThing', [], z.unknown())).rejects.toThrow(/bad params/)
+  })
+
+  it('callHistorical appends the configured historical parameter, not minContextSlot', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ jsonrpc: '2.0', id: 1, result: { ok: true } }),
+    })
+    const client = new RpcClient('https://rpc.example', { fetchImpl: fetchMock as never, baseDelayMs: 1 })
+    await client.callHistorical('getAccountInfo', ['MINT'], 12345, z.object({ ok: z.boolean() }))
+    const sent = JSON.parse((fetchMock.mock.calls[0]![1] as { body: string }).body)
+    expect(sent.params).toEqual(['MINT', { encoding: 'jsonParsed', slot: 12345 }])
+    expect(JSON.stringify(sent)).not.toMatch(/minContextSlot/)
+  })
+
+  it('callHistorical honours a provider-specific parameter shape', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ jsonrpc: '2.0', id: 1, result: { ok: true } }),
+    })
+    const client = new RpcClient('https://rpc.example', {
+      fetchImpl: fetchMock as never, baseDelayMs: 1,
+      historicalParam: slot => ({ encoding: 'jsonParsed', blockNumber: slot }),
+    })
+    await client.callHistorical('getAccountInfo', ['MINT'], 777, z.object({ ok: z.boolean() }))
+    const sent = JSON.parse((fetchMock.mock.calls[0]![1] as { body: string }).body)
+    expect(sent.params[1]).toEqual({ encoding: 'jsonParsed', blockNumber: 777 })
   })
 })
 ```
@@ -228,6 +256,12 @@ export type RpcOptions = {
   baseDelayMs?: number
   maxAttempts?: number
   minIntervalMs?: number
+  /**
+   * Builds the provider-specific config object that pins a read to a past slot.
+   * Default matches Alchemy Account Archive's documented shape; Task 7 confirms
+   * it against the live API and changes only this default if it differs.
+   */
+  historicalParam?: (slot: number) => Record<string, unknown>
 }
 
 export class RpcClient {
@@ -236,6 +270,7 @@ export class RpcClient {
   private readonly baseDelayMs: number
   private readonly maxAttempts: number
   private readonly minIntervalMs: number
+  private readonly historicalParam: (slot: number) => Record<string, unknown>
   private lastCallAt = 0
   private nextId = 1
 
@@ -245,6 +280,7 @@ export class RpcClient {
     this.baseDelayMs = opts.baseDelayMs ?? 700
     this.maxAttempts = opts.maxAttempts ?? 5
     this.minIntervalMs = opts.minIntervalMs ?? 0
+    this.historicalParam = opts.historicalParam ?? (slot => ({ encoding: 'jsonParsed', slot }))
   }
 
   async call<T>(method: string, params: unknown[], schema: ZodType<T>): Promise<T> {
@@ -273,10 +309,17 @@ export class RpcClient {
     throw lastErr instanceof Error ? lastErr : new Error(`RPC ${method} failed after ${this.maxAttempts} attempts`)
   }
 
-  /** Same as call(), with a minContextSlot commitment config appended for historical reads. */
-  async callAtSlot<T>(method: string, params: unknown[], slot: number, schema: ZodType<T>): Promise<T> {
-    const withSlot = [...params, { encoding: 'jsonParsed', minContextSlot: slot }]
-    return this.call(method, withSlot, schema)
+  /**
+   * Read state as it stood at `slot`, using the archive provider's historical parameter.
+   *
+   * Deliberately NOT minContextSlot: that is a freshness guard ("fail unless this node
+   * has reached slot N"), and using it here would return head state wearing a snapshot
+   * label — wrong without being loud, which is the worst failure this project has.
+   * The parameter shape is a constructor option because providers differ; Task 7 pins
+   * it against the real archive API without touching a single caller.
+   */
+  async callHistorical<T>(method: string, params: unknown[], slot: number, schema: ZodType<T>): Promise<T> {
+    return this.call(method, [...params, this.historicalParam(slot)], schema)
   }
 
   private async throttle(): Promise<void> {
@@ -779,7 +822,7 @@ describe('pickMultiplier', () => {
 describe('readMultiplierAtSlot', () => {
   it('returns 1 for a mint with no scaledUiAmount extension', async () => {
     const rpc = {
-      call: vi.fn(async () => ({
+      callHistorical: vi.fn(async () => ({
         value: { data: { parsed: { info: { decimals: 6, extensions: [{ extension: 'transferHook', state: {} }] } } } },
       })),
     }
@@ -789,7 +832,7 @@ describe('readMultiplierAtSlot', () => {
 
   it('reads the multiplier from the extension', async () => {
     const rpc = {
-      call: vi.fn(async () => ({
+      callHistorical: vi.fn(async () => ({
         value: {
           data: {
             parsed: {
@@ -916,7 +959,7 @@ export function pickMultiplier(state: ScaledUiAmountState, blockTimeSeconds: num
 export async function readMultiplierAtSlot(
   rpc: RpcClient, mint: string, slot: number, blockTimeSeconds: number,
 ): Promise<number> {
-  const acct = await rpc.callAtSlot('getAccountInfo', [mint], slot, MintAccountSchema)
+  const acct = await rpc.callHistorical('getAccountInfo', [mint], slot, MintAccountSchema)
   const ext = acct.value.data.parsed.info.extensions?.find(e => e.extension === 'scaledUiAmountConfig')
   if (!ext) return 1
   const parsed = ScaledStateSchema.safeParse(ext.state)
@@ -985,7 +1028,7 @@ const SYSTEM_PROGRAM = '11111111111111111111111111111111'
 describe('classifyOwners', () => {
   it('keeps wallet accounts owned by the system program', async () => {
     const rpc = {
-      call: vi.fn(async () => ({ value: [{ owner: SYSTEM_PROGRAM, executable: false }] })),
+      callHistorical: vi.fn(async () => ({ value: [{ owner: SYSTEM_PROGRAM, executable: false }] })),
     }
     const out = await classifyOwners(rpc as never, ['WalletAddress1111111111111111111111111111111'], 100)
     expect(out.eligible).toEqual(['WalletAddress1111111111111111111111111111111'])
@@ -994,7 +1037,7 @@ describe('classifyOwners', () => {
 
   it('excludes an account owned by a non-system program', async () => {
     const rpc = {
-      call: vi.fn(async () => ({
+      callHistorical: vi.fn(async () => ({
         value: [{ owner: 'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK', executable: false }],
       })),
     }
@@ -1004,15 +1047,15 @@ describe('classifyOwners', () => {
   })
 
   it('excludes known burn addresses without an RPC call', async () => {
-    const rpc = { call: vi.fn() }
+    const rpc = { callHistorical: vi.fn() }
     const out = await classifyOwners(rpc as never, [BURN_ADDRESSES[0]!], 100)
     expect(out.excluded[0]!.reason).toBe('burn')
-    expect(rpc.call).not.toHaveBeenCalled()
+    expect(rpc.callHistorical).not.toHaveBeenCalled()
   })
 
   it('treats an account that does not exist at the slot as eligible, not excluded', async () => {
     // A wallet can hold tokens through an ATA while its own account has never been funded.
-    const rpc = { call: vi.fn(async () => ({ value: [null] })) }
+    const rpc = { callHistorical: vi.fn(async () => ({ value: [null] })) }
     const out = await classifyOwners(rpc as never, ['UnfundedWallet11111111111111111111111111111'], 100)
     expect(out.eligible).toEqual(['UnfundedWallet11111111111111111111111111111'])
   })
@@ -1064,7 +1107,7 @@ export async function classifyOwners(
 
   for (let i = 0; i < toProbe.length; i += CHUNK) {
     const chunk = toProbe.slice(i, i + CHUNK)
-    const res = await rpc.callAtSlot('getMultipleAccounts', [chunk], slot, MultipleAccountsSchema)
+    const res = await rpc.callHistorical('getMultipleAccounts', [chunk], slot, MultipleAccountsSchema)
     chunk.forEach((address, idx) => {
       const info = res.value[idx]
       // A never-funded wallet has no account but can still own an ATA and can still sign.
@@ -1321,7 +1364,7 @@ const MINT = 'AMD8XwJXgQ9WV45Wyj9yFLejxzf2J6VM1PJY8bJEjeES'
 describe('archiveBalanceAtSlot', () => {
   it('sums all token accounts an owner held for the mint at that slot', async () => {
     const rpc = {
-      call: vi.fn(async () => ({
+      callHistorical: vi.fn(async () => ({
         value: [
           { account: { data: { parsed: { info: { tokenAmount: { amount: '400' } } } } } },
           { account: { data: { parsed: { info: { tokenAmount: { amount: '600' } } } } } },
@@ -1332,12 +1375,12 @@ describe('archiveBalanceAtSlot', () => {
   })
 
   it('returns null when the owner held nothing', async () => {
-    const rpc = { call: vi.fn(async () => ({ value: [] })) }
+    const rpc = { callHistorical: vi.fn(async () => ({ value: [] })) }
     expect(await archiveBalanceAtSlot(rpc as never, MINT, 'bob', 100)).toBeNull()
   })
 
   it('propagates an archive error instead of returning zero', async () => {
-    const rpc = { call: vi.fn(async () => { throw new Error('slot not in archive coverage') }) }
+    const rpc = { callHistorical: vi.fn(async () => { throw new Error('slot not in archive coverage') }) }
     await expect(archiveBalanceAtSlot(rpc as never, MINT, 'alice', 100)).rejects.toThrow(/archive coverage/)
   })
 })
@@ -1377,7 +1420,7 @@ const TokenAccountsSchema = z.object({
 export async function archiveBalanceAtSlot(
   rpc: RpcClient, mint: string, owner: string, slot: number,
 ): Promise<bigint | null> {
-  const res = await rpc.callAtSlot('getTokenAccountsByOwner', [owner, { mint }], slot, TokenAccountsSchema)
+  const res = await rpc.callHistorical('getTokenAccountsByOwner', [owner, { mint }], slot, TokenAccountsSchema)
   if (res.value.length === 0) return null
   return res.value.reduce(
     (sum, entry) => sum + BigInt(entry.account.data.parsed.info.tokenAmount.amount),
@@ -1539,9 +1582,13 @@ describe('merkle', () => {
   })
 
   it('produces a different root when leaves are reordered without sorting', () => {
-    const alice = leafHash(MINT, 'alice', '1000', 1)
-    const bob = leafHash(MINT, 'bob', '500', 1)
-    expect(buildTree([alice, bob]).root).not.toBe(buildTree([bob, alice]).root)
+    // Three leaves, not two: each pair is sorted by byte value before hashing
+    // (so on-chain proof verification in Phase D needs no position flags), which
+    // makes a two-leaf tree order-independent. Three leaves still differ.
+    const a = leafHash(MINT, 'alice', '1000', 1)
+    const b = leafHash(MINT, 'bob', '500', 1)
+    const c = leafHash(MINT, 'carol', '250', 1)
+    expect(buildTree([a, b, c]).root).not.toBe(buildTree([c, b, a]).root)
   })
 
   it('sortLeaves makes order irrelevant', () => {
@@ -1625,7 +1672,13 @@ export function buildTree(leaves: Buffer[]): { root: string; layers: Buffer[][] 
     for (let i = 0; i < prev.length; i += 2) {
       const left = prev[i]!
       const right = prev[i + 1] ?? left // odd node is paired with itself
-      next.push(sha256(NODE_PREFIX, left, right))
+      // Each pair is hashed in byte order, so a proof needs no left/right flags.
+      // verifyProof() below does the same, and so does scripts/verify-snapshot.mjs.
+      next.push(
+        Buffer.compare(left, right) <= 0
+          ? sha256(NODE_PREFIX, left, right)
+          : sha256(NODE_PREFIX, right, left),
+      )
     }
     layers.push(next)
   }
@@ -1656,13 +1709,10 @@ export function verifyProof(leaf: Buffer, proof: string[], root: string): boolea
 }
 ```
 
-> **Note for the implementer:** `verifyProof` orders each pair by byte comparison while `buildTree` orders by position. Make them consistent — Step 4 will fail until you do. Fix it by making `buildTree` sort each pair the same way (`Buffer.compare(left, right) <= 0 ? [left, right] : [right, left]`), which also makes proofs shorter to verify on-chain in Phase D. Update the "reordered leaves" test only if it still holds; it should, because leaf *order in the layer* still differs.
-
-- [ ] **Step 4: Run test and fix the pair-ordering inconsistency**
+- [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/snapshot/merkle.test.ts`
-Expected: the proof tests FAIL first. Apply the pair-ordering fix described in the note, rerun.
-Expected after fix: PASS, 7 tests
+Expected: PASS, 7 tests
 
 - [ ] **Step 5: Commit**
 
@@ -1903,16 +1953,23 @@ describe('takeSnapshot', () => {
         if (method === 'getAccountInfo') return { value: { data: { parsed: { info: { decimals: 6, extensions: [] } } } } }
         throw new Error(`unexpected ${method}`)
       }),
-      callAtSlot: vi.fn(async (method: string) => {
-        if (method === 'getMultipleAccounts') return { value: [{ owner: '11111111111111111111111111111111', executable: false }] }
-        if (method === 'getAccountInfo') return { value: { data: { parsed: { info: { decimals: 6, extensions: [] } } } } }
+    }
+    // The archive client answers every historical read: the mint's multiplier,
+    // account ownership, and the balance check that will disagree with the replay.
+    const archiveRpc = {
+      callHistorical: vi.fn(async (method: string) => {
+        if (method === 'getAccountInfo') {
+          return { value: { data: { parsed: { info: { decimals: 6, extensions: [] } } } } }
+        }
+        if (method === 'getMultipleAccounts') {
+          return { value: [{ owner: '11111111111111111111111111111111', executable: false }] }
+        }
+        if (method === 'getTokenAccountsByOwner') {
+          // 999 against the replay's 1000 — the sources must refuse to agree.
+          return { value: [{ account: { data: { parsed: { info: { tokenAmount: { amount: '999' } } } } } }] }
+        }
         throw new Error(`unexpected ${method}`)
       }),
-    }
-    const archiveRpc = {
-      callAtSlot: vi.fn(async () => ({
-        value: [{ account: { data: { parsed: { info: { tokenAmount: { amount: '999' } } } } } }],
-      })),
     }
     const snap = await takeSnapshot({ rpc: rpc as never, archiveRpc: archiveRpc as never, registry, mint: MINT, recordDate: '2026-01-06' })
     expect(snap.sourcesAgree).toBe(false)
@@ -1969,10 +2026,13 @@ export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot>
   const blockTime = await rpc.call('getBlockTime', [slot], BlockTimeSchema)
   if (blockTime === null) throw new Error(`Slot ${slot} has no block time; cannot anchor the multiplier`)
 
-  const multiplier = await readMultiplierAtSlot(rpc, mint, slot, blockTime)
+  // Multiplier and account ownership are historical reads: they must reflect the
+  // snapshot slot, so they go through the archive client. Signature and transaction
+  // history is not state, so the replay uses the standard client.
+  const multiplier = await readMultiplierAtSlot(archiveRpc, mint, slot, blockTime)
   const replayed = await replayHolders(rpc, mint, slot)
 
-  const { eligible, excluded } = await classifyOwners(rpc, [...replayed.keys()], slot)
+  const { eligible, excluded } = await classifyOwners(archiveRpc, [...replayed.keys()], slot)
   const eligibleSet = new Set(eligible)
   const filtered = new Map([...replayed].filter(([owner]) => eligibleSet.has(owner)))
 
