@@ -1155,6 +1155,15 @@ describe('classifyOwners', () => {
     const out = await classifyOwners(rpc as never, ['UnfundedWallet11111111111111111111111111111'], 100)
     expect(out.eligible).toEqual(['UnfundedWallet11111111111111111111111111111'])
   })
+
+  it('throws rather than defaulting when the response is shorter than the request', async () => {
+    // A truncated reply must not let the missing tail pass as eligible — that is
+    // how a pool PDA would end up counted as a voter.
+    const rpc = { callHistorical: vi.fn(async () => ({ value: [] })) }
+    await expect(
+      classifyOwners(rpc as never, ['Wallet1111111111111111111111111111111111111'], 100),
+    ).rejects.toThrow(/partial response/i)
+  })
 })
 ```
 
@@ -1206,8 +1215,17 @@ export async function classifyOwners(
     const res = await rpc.callHistorical('getMultipleAccounts', [chunk], slot, MultipleAccountsSchema)
     chunk.forEach((address, idx) => {
       const info = res.value[idx]
+      if (info === undefined) {
+        // The response is shorter than the request. Treating the missing tail as
+        // eligible would silently admit pool PDAs into the holder set — the exact
+        // error this function exists to prevent — so refuse rather than default.
+        throw new Error(
+          `getMultipleAccounts returned ${res.value.length} entries for ${chunk.length} addresses ` +
+          `at slot ${slot}; nothing for ${address}. Refusing to classify a partial response.`
+        )
+      }
       // A never-funded wallet has no account but can still own an ATA and can still sign.
-      if (info === null || info === undefined) { eligible.push(address); return }
+      if (info === null) { eligible.push(address); return }
       if (info.owner === SYSTEM_PROGRAM) eligible.push(address)
       else excluded.push({ address, reason: 'program-owned' })
     })
@@ -1220,7 +1238,7 @@ export async function classifyOwners(
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/snapshot/exclusions.test.ts`
-Expected: PASS, 4 tests
+Expected: PASS, 5 tests
 
 - [ ] **Step 5: Commit**
 
