@@ -28,7 +28,12 @@ export class RpcClient {
     this.fetchImpl = opts.fetchImpl ?? fetch
     this.baseDelayMs = opts.baseDelayMs ?? 700
     this.maxAttempts = opts.maxAttempts ?? 5
-    this.minIntervalMs = opts.minIntervalMs ?? 0
+    // 700ms is the measured-safe pacing for public Solana RPC: a 10-call JSON-RPC
+    // batch returned 429 immediately, while sequential calls at this spacing
+    // succeeded across all 55 mints. Reactive backoff alone is not enough — the
+    // replay in Task 6 makes thousands of calls and would eat a 429 on every run.
+    // Callers on a paid endpoint pass a lower value explicitly.
+    this.minIntervalMs = opts.minIntervalMs ?? 700
     this.historicalParam = opts.historicalParam ?? (slot => ({ encoding: 'jsonParsed', slot }))
   }
 
@@ -37,11 +42,20 @@ export class RpcClient {
     let lastErr: unknown
     for (let attempt = 0; attempt < this.maxAttempts; attempt++) {
       if (attempt > 0) await sleep(this.baseDelayMs * 2 ** (attempt - 1))
-      const res = await this.fetchImpl(this.url, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: this.nextId++, method, params }),
-      })
+      let res: Response
+      try {
+        res = await this.fetchImpl(this.url, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: this.nextId++, method, params }),
+        })
+      } catch (err) {
+        // Real fetch rejects on network faults — connection reset, DNS failure,
+        // timeout. A replay makes thousands of calls, so one transient blip must
+        // not abort the run. Treat it as retryable, exactly like a 429.
+        lastErr = err
+        continue
+      }
       if (res.status === 429 || res.status >= 500) {
         lastErr = new Error(`RPC ${method} HTTP ${res.status}`)
         continue
