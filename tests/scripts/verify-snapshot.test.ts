@@ -106,4 +106,45 @@ describe('verify-snapshot.mjs', () => {
     expect(stderr).toMatch(/more than once/i)
     expect(stderr).toMatch(/bob/)
   })
+
+  it('refuses a snapshot whose replayed balances do not sum to total supply', () => {
+    // The arithmetic over the published rows is sound, so the root recomputes fine
+    // and the verifier used to print OK. A holder is missing from the set: the rows
+    // are not wrong, they are incomplete, and that is still not verified.
+    const { status, stderr } = runOn({
+      mint: MINT, slot: 100, blockTime: 1_700_000_000, decimals: 6, multiplier: 1,
+      holders: [
+        { owner: 'alice', rawAmount: '1000', shares: '0.001000' },
+        { owner: 'bob', rawAmount: '500', shares: '0.000500' },
+      ],
+      excluded: [], sourcesAgree: true,
+      supply: { expected: '5000', replayed: '1500', matches: false },
+      merkleRoot: realRoot(),
+    })
+    expect(status).toBe(1)
+    expect(stderr).toMatch(/REFUSED/)
+    expect(stderr).toMatch(/1500.*5000|5000.*1500/s)
+  })
+
+  it('refuses a snapshot with no merkleRoot rather than comparing against null', () => {
+    const { status, stderr } = runOn({
+      mint: MINT, slot: 100, blockTime: 1_700_000_000, decimals: 6, multiplier: 1,
+      holders: [{ owner: 'alice', rawAmount: '1000', shares: '0.001000' }],
+      excluded: [], sourcesAgree: true, merkleRoot: null,
+    })
+    expect(status).toBe(1)
+    expect(stderr).toMatch(/no merkleRoot/i)
+  })
+
+  it('refuses a fractional multiplier with a sentence, not a RangeError', () => {
+    const { status, stderr } = runOn({
+      mint: MINT, slot: 100, blockTime: 1_700_000_000, decimals: 6, multiplier: 0.1,
+      holders: [{ owner: 'alice', rawAmount: '1000', shares: '0.000100' }],
+      excluded: [], sourcesAgree: true, merkleRoot: '0'.repeat(64),
+    })
+    expect(status).toBe(1)
+    expect(stderr).toMatch(/integer of at least 1/i)
+    expect(stderr).toMatch(/reverse split/i)
+    expect(stderr).not.toMatch(/RangeError|at Object|at Module/)
+  })
 })

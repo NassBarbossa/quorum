@@ -74,6 +74,22 @@ if (snap.sourcesAgree !== true) {
   process.exit(1)
 }
 
+if (snap.supply && snap.supply.matches === false) {
+  // The tallier withholds a root in this case, so a file that carries one anyway is
+  // already inconsistent with itself. Recomputing the root would still say OK — the
+  // arithmetic over the published rows is fine; it is the rows that are incomplete.
+  console.error(
+    `REFUSED: this snapshot's replayed balances sum to ${snap.supply.replayed} against a ` +
+    `total supply of ${snap.supply.expected}. A holder is missing from the set.`
+  )
+  process.exit(1)
+}
+
+if (typeof snap.merkleRoot !== 'string' || snap.merkleRoot.length === 0) {
+  console.error(`REFUSED: this snapshot has no merkleRoot; the tallier published no answer to check.`)
+  process.exit(1)
+}
+
 if (!Array.isArray(snap.holders) || snap.holders.length === 0) {
   // root() would throw 'empty leaf set' here and print a stack trace. A verifier
   // that crashes reads as broken tooling rather than as a verdict on the file,
@@ -92,6 +108,18 @@ for (const holder of snap.holders) {
     process.exit(1)
   }
   ownersSeen.add(holder.owner)
+}
+
+if (!Number.isInteger(snap.multiplier) || snap.multiplier < 1) {
+  // BigInt() on a fractional number throws a bare RangeError with a stack trace,
+  // which reads as broken tooling rather than as a verdict. Say the same thing
+  // src/snapshot/shares.ts says, in a sentence.
+  console.error(
+    `REFUSED: multiplier must be an integer of at least 1 to keep share maths exact, ` +
+    `got ${snap.multiplier}. A fractional multiplier means this mint has had a reverse ` +
+    `split, which Phase A does not support.`
+  )
+  process.exit(1)
 }
 
 let shareErrors = 0
