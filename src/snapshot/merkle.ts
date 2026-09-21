@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 
 const LEAF_PREFIX = Buffer.from([0x00])
 const NODE_PREFIX = Buffer.from([0x01])
+const COUNT_PREFIX = Buffer.from([0x02])
 
 function sha256(...parts: Buffer[]): Buffer {
   const h = createHash('sha256')
@@ -25,12 +26,53 @@ export function leafHash(mint: string, owner: string, rawAmount: string, multipl
   )
 }
 
-/** Deterministic leaf order: lexicographic by owner address. */
+/**
+ * Deterministic leaf order: lexicographic by owner address.
+ *
+ * Throws on a repeated owner. One wallet cannot hold two rows in a holder set —
+ * such a set is malformed whatever it hashes to, and a duplicate row is exactly
+ * how an attacker doubles a holder's weight. Refuse rather than sort it happily.
+ */
 export function sortLeaves<T extends { owner: string }>(rows: T[]): T[] {
+  const seen = new Set<string>()
+  for (const row of rows) {
+    if (seen.has(row.owner)) {
+      throw new Error(
+        `Holder set contains ${row.owner} more than once. A holder appears exactly once ` +
+        `in a snapshot; refusing to build a tree over a duplicated row.`
+      )
+    }
+    seen.add(row.owner)
+  }
   return [...rows].sort((a, b) => (a.owner < b.owner ? -1 : a.owner > b.owner ? 1 : 0))
 }
 
-export function buildTree(leaves: Buffer[]): { root: string; layers: Buffer[][] } {
+/** Leaf count as 8 bytes big-endian, bound into the published root. */
+function countBytes(leafCount: number): Buffer {
+  const buf = Buffer.alloc(8)
+  buf.writeBigUInt64BE(BigInt(leafCount))
+  return buf
+}
+
+export type Tree = {
+  /**
+   * The PUBLISHED root: SHA256(0x02 || leafCount(8, big-endian) || treeRoot).
+   * Binding the count defeats leaf duplication. A classic Merkle tree that pairs a
+   * lone odd node with itself gives [a,b,c] and [a,b,c,c] the SAME inner root, so an
+   * attacker could duplicate the lexicographically-last holder's row, double that
+   * holder's weight, and leave the root untouched. The counts differ, so the
+   * published roots differ. scripts/verify-snapshot.mjs recomputes this same value.
+   */
+  root: string
+  /**
+   * The INNER tree root, over the leaves alone. Proofs are checked against this one,
+   * never against `root`: proofFor()/verifyProof() walk the leaf layers only.
+   */
+  treeRoot: string
+  layers: Buffer[][]
+}
+
+export function buildTree(leaves: Buffer[]): Tree {
   if (leaves.length === 0) throw new Error('Cannot build a Merkle tree over an empty leaf set')
   const layers: Buffer[][] = [leaves]
   while (layers[layers.length - 1]!.length > 1) {
@@ -49,7 +91,12 @@ export function buildTree(leaves: Buffer[]): { root: string; layers: Buffer[][] 
     }
     layers.push(next)
   }
-  return { root: layers[layers.length - 1]![0]!.toString('hex'), layers }
+  const treeRoot = layers[layers.length - 1]![0]!
+  return {
+    root: sha256(COUNT_PREFIX, countBytes(leaves.length), treeRoot).toString('hex'),
+    treeRoot: treeRoot.toString('hex'),
+    layers,
+  }
 }
 
 export function proofFor(layers: Buffer[][], index: number): string[] {
@@ -64,7 +111,13 @@ export function proofFor(layers: Buffer[][], index: number): string[] {
   return proof
 }
 
-export function verifyProof(leaf: Buffer, proof: string[], root: string): boolean {
+/**
+ * Check a proof against the INNER tree root (`Tree.treeRoot`), not the published
+ * root. The published root wraps the inner one with the leaf count, which no proof
+ * path reconstructs; a caller holding only a published root must first confirm the
+ * leaf count and unwrap it.
+ */
+export function verifyProof(leaf: Buffer, proof: string[], treeRoot: string): boolean {
   let node = leaf
   for (const sibling of proof) {
     const sib = Buffer.from(sibling, 'hex')
@@ -72,5 +125,5 @@ export function verifyProof(leaf: Buffer, proof: string[], root: string): boolea
       ? sha256(NODE_PREFIX, node, sib)
       : sha256(NODE_PREFIX, sib, node)
   }
-  return node.toString('hex') === root
+  return node.toString('hex') === treeRoot
 }

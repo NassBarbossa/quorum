@@ -21,6 +21,20 @@ function writeSnapshot(root: string) {
   return path
 }
 
+/** Write an arbitrary snapshot object and run the verifier over it. */
+function runOn(snapshot: unknown): { status: number | undefined; stderr: string } {
+  const dir = mkdtempSync(join(tmpdir(), 'quorum-'))
+  const path = join(dir, 'snapshot.json')
+  writeFileSync(path, JSON.stringify(snapshot, null, 2))
+  try {
+    execFileSync('node', ['scripts/verify-snapshot.mjs', path], { encoding: 'utf8', stdio: 'pipe' })
+    return { status: 0, stderr: '' }
+  } catch (err) {
+    const e = err as { status?: number; stderr?: string }
+    return { status: e.status, stderr: e.stderr ?? '' }
+  }
+}
+
 function realRoot() {
   const rows = sortLeaves([
     { owner: 'alice', rawAmount: '1000' },
@@ -73,5 +87,23 @@ describe('verify-snapshot.mjs', () => {
     expect(status).toBe(1)
     expect(stderr).toMatch(/no holders/i)
     expect(stderr).not.toMatch(/at Object|at Module/)  // no stack trace
+  })
+
+  it('refuses a holder set that names the same owner twice', () => {
+    // The duplication attack: bob is the lexicographically-last holder, so appending
+    // a copy of his row doubles his weight. The verifier must refuse before hashing,
+    // naming him — and the count-bound root would catch it even if it did not.
+    const { status, stderr } = runOn({
+      mint: MINT, slot: 100, blockTime: 1_700_000_000, decimals: 6, multiplier: 1,
+      holders: [
+        { owner: 'alice', rawAmount: '1000', shares: '0.001000' },
+        { owner: 'bob', rawAmount: '500', shares: '0.000500' },
+        { owner: 'bob', rawAmount: '500', shares: '0.000500' },
+      ],
+      excluded: [], sourcesAgree: true, merkleRoot: realRoot(),
+    })
+    expect(status).toBe(1)
+    expect(stderr).toMatch(/more than once/i)
+    expect(stderr).toMatch(/bob/)
   })
 })

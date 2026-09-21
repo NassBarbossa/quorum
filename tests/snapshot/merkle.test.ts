@@ -36,10 +36,12 @@ describe('merkle', () => {
   })
 
   it('verifies a proof for every leaf in an odd-sized tree', () => {
+    // Proofs are checked against the INNER tree root: the published root wraps it
+    // with the leaf count, which no proof path reconstructs.
     const rows = ['alice', 'bob', 'carol'].map((owner, i) => leafHash(MINT, owner, String((i + 1) * 100), 1))
     const tree = buildTree(rows)
     rows.forEach((leaf, i) => {
-      expect(verifyProof(leaf, proofFor(tree.layers, i), tree.root)).toBe(true)
+      expect(verifyProof(leaf, proofFor(tree.layers, i), tree.treeRoot)).toBe(true)
     })
   })
 
@@ -47,10 +49,33 @@ describe('merkle', () => {
     const rows = ['alice', 'bob'].map((owner, i) => leafHash(MINT, owner, String((i + 1) * 100), 1))
     const tree = buildTree(rows)
     const tampered = leafHash(MINT, 'alice', '999999', 1)
-    expect(verifyProof(tampered, proofFor(tree.layers, 0), tree.root)).toBe(false)
+    expect(verifyProof(tampered, proofFor(tree.layers, 0), tree.treeRoot)).toBe(false)
   })
 
   it('throws on an empty leaf set rather than inventing a root', () => {
     expect(() => buildTree([])).toThrow(/empty/i)
+  })
+
+  it('publishes a different root when the last leaf is duplicated', () => {
+    // The attack: leaves are sorted by owner, so an attacker appends a copy of the
+    // lexicographically-last holder's row to double that holder's weight. A tree
+    // that pairs a lone odd node with itself gives [a,b,c] and [a,b,c,c] the SAME
+    // inner root, so the published root would not move and the verifier would
+    // print OK. Binding the leaf count into the published root separates them.
+    const a = leafHash(MINT, 'alice', '1000', 1)
+    const b = leafHash(MINT, 'bob', '500', 1)
+    const c = leafHash(MINT, 'carol', '250', 1)
+    const honest = buildTree([a, b, c])
+    const forged = buildTree([a, b, c, c])
+    expect(forged.treeRoot).toBe(honest.treeRoot)   // the inner roots really do collide
+    expect(forged.root).not.toBe(honest.root)       // the published roots must not
+  })
+
+  it('refuses a holder set that names the same owner twice', () => {
+    expect(() => sortLeaves([
+      { owner: 'alice', rawAmount: '1000' },
+      { owner: 'carol', rawAmount: '250' },
+      { owner: 'carol', rawAmount: '250' },
+    ])).toThrow(/more than once/i)
   })
 })

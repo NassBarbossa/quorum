@@ -15,6 +15,7 @@ import { readFileSync } from 'node:fs'
 
 const LEAF = Buffer.from([0x00])
 const NODE = Buffer.from([0x01])
+const COUNT = Buffer.from([0x02])
 const SEP = Buffer.from([0x1f])
 
 function h(...parts) {
@@ -33,6 +34,10 @@ function leaf(mint, owner, rawAmount, multiplier) {
   )
 }
 
+// The published root is h(0x02 || leafCount(8, big-endian) || treeRoot).
+// Pairing a lone odd node with itself makes [a,b,c] and [a,b,c,c] hash to the same
+// tree root, so duplicating the last holder's row would double that holder's weight
+// without moving the root. Binding the count separates the two.
 function root(leaves) {
   if (leaves.length === 0) throw new Error('empty leaf set')
   let level = leaves
@@ -45,7 +50,9 @@ function root(leaves) {
     }
     level = next
   }
-  return level[0].toString('hex')
+  const count = Buffer.alloc(8)
+  count.writeBigUInt64BE(BigInt(leaves.length))
+  return h(COUNT, count, level[0]).toString('hex')
 }
 
 function sharesOf(rawAmount, multiplier, decimals) {
@@ -73,6 +80,18 @@ if (!Array.isArray(snap.holders) || snap.holders.length === 0) {
   // and someone checking our work deserves a sentence, not a trace.
   console.error(`REFUSED: this snapshot has no holders; there is nothing to verify.`)
   process.exit(1)
+}
+
+// Before any hashing: a holder set naming the same owner twice is malformed whatever
+// it hashes to, and duplication is the attack the count-bound root exists to catch.
+// Name the offender rather than letting the root mismatch report it as "FAIL".
+const ownersSeen = new Set()
+for (const holder of snap.holders) {
+  if (ownersSeen.has(holder.owner)) {
+    console.error(`REFUSED: ${holder.owner} appears more than once in this holder set.`)
+    process.exit(1)
+  }
+  ownersSeen.add(holder.owner)
 }
 
 let shareErrors = 0
