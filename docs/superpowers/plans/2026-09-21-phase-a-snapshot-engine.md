@@ -2189,7 +2189,6 @@ function archiveMock(opts: { balance: string; supply: string }) {
 describe('takeSnapshot detectors', () => {
   it('returns sourcesAgree=false and a null root when the sources disagree', async () => {
     const rpc = standardMock()
-    }
     // 999 against the replay's 1000 — the sources must refuse to agree. Supply is
     // set to 1000 so this test isolates the reconcile failure from the supply check.
     const archiveRpc = archiveMock({ balance: '999', supply: '1000' })
