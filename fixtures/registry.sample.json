@@ -1,0 +1,1066 @@
+[
+  {
+    "mint": "BBosJLw8ZzoATiEyywiifx7AgmrD2Cm3XjFWbhbRhChy",
+    "symbol": "BB",
+    "name": "BlackBerry - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": null
+  },
+  {
+    "mint": "PEPEqnuuCDbBC89p1u9vpnP1KQ2oj1xTcQBsjt9X55m",
+    "symbol": "PEPE",
+    "name": "Pepe",
+    "decimals": 4,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "CYPHuMmCL1GxJWa2tsPhLKykC7GrHJTCHwbXD4g5uawK",
+    "symbol": "CYPH",
+    "name": "Cypherpunk Technologies - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": null
+  },
+  {
+    "mint": "USNv3NkKA27Dh4nsHJDPhW4VoEcTQmjoZyJt2dqdwFu",
+    "symbol": "USO",
+    "name": "United States Oil Fund - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "crypto",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": null
+  },
+  {
+    "mint": "RUMsPfFZFnN1ZmGANwP7FNMJMjKH4m9RiMePrtVtLe7",
+    "symbol": "RUM",
+    "name": "RUM Group Inc. - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": null
+  },
+  {
+    "mint": "WULFeyfrj1VJKD9HhRTcW8R4g5HefUA11HDEdBv2WxD",
+    "symbol": "WULF",
+    "name": "TeraWulf - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": null
+  },
+  {
+    "mint": "1NJMqVM4PadjuzYmeB7zV7q7DV8oB3ExaQCd9x6KsLz",
+    "symbol": "INJ",
+    "name": "Injective",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "LUV9GB51PNZNRyzzyYK3rtqFfvDvWtRiXZ34wVq2HrX",
+    "symbol": "LUV",
+    "name": "Southwest Airlines Co. - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": null
+  },
+  {
+    "mint": "AMD8XwJXgQ9WV45Wyj9yFLejxzf2J6VM1PJY8bJEjeES",
+    "symbol": "AMD",
+    "name": "Advanced Micro Devices (Backpack Securities)",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": null
+  },
+  {
+    "mint": "BRVaZKg6J9iF2BEsdpsxJ9NyvN9PPxPZuoQUX2v8qqkk",
+    "symbol": "BROS",
+    "name": "Dutch Bros - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": null
+  },
+  {
+    "mint": "FLYRq3en8r2Z69gN3KyAnDrvnitEJNkwPYY7favinHeD",
+    "symbol": "FLY",
+    "name": "Firefly Aerospace - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": null
+  },
+  {
+    "mint": "PTNzAfFAB4LvoUQEUUGrFMyUoRLExMYjH6CcfyQfsVP",
+    "symbol": "PTN",
+    "name": "Palatin Technologies, Inc. Common Stock - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "PTN",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "SCHHJ3jRdSjeFEVAaLrnYdx3Brphn92Ys7z1qkiCtPX",
+    "symbol": "SCHH",
+    "name": "Schwab U.S. REIT ETF - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "SCHH",
+      "currency": "USD",
+      "mic": "ARCX"
+    }
+  },
+  {
+    "mint": "LinkhB3afbBKb2EQQu7s7umdZceV3wcvAUJhQAfQ23L",
+    "symbol": "LINK",
+    "name": "Chainlink",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "FLWSojG1gB5VStYR3Sb4nQFRt43UBYkqih1j2CpVLqgd",
+    "symbol": "FLWS",
+    "name": "1-800-FLOWERS.COM - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "FLWS",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "DKNGQFNGQmoBdXSRGKJ8tTu7uPDasw5JDcfMmWniNfow",
+    "symbol": "DKNG",
+    "name": "DraftKings - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "DKNG",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "WENAZ2WyPbmgvUcKfQ8hyMDfBQP9bZ65hsZ5KTFrRGZ",
+    "symbol": "WEN",
+    "name": "The Wendy's Company - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "WEN",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "DNUTsCvKbKwu2RM72cUuW3TD9YpzArzACcqYQssjPLSk",
+    "symbol": "DNUT",
+    "name": "Krispy Kreme, Inc - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "DNUT",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "GRNDYDpqwpCm6jVxpbh4xT5AM4r3p391qYsKTHqgaET2",
+    "symbol": "GRND",
+    "name": "Grindr - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "GRND",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "BArimz1PcKZr8PcPh3tcZ2dg4S7FJLk3cw6R5F8GsHKg",
+    "symbol": "BA",
+    "name": "The Boeing Company - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "BA",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "BABANGA4JE7Kkam4nTrALAwAVgsNJUuFJnnkF7S16BZp",
+    "symbol": "BABA",
+    "name": "Alibaba Group Holding - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "BABA",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "BULL151gUXcFV5wXEUqu9Am2L7Qt4bTJRLRuAUjkcspC",
+    "symbol": "BULL",
+    "name": "Webull Corporation Class A Ordinary Shares - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "BULL",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "CZEB3WNZuF2Yz1z2H81RcCk8T7fsw82KB33zqamASVsg",
+    "symbol": "COST",
+    "name": "Costco Wholesale - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "COST",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "DELL2aRKQz7DMq5DrKLtkn47ZCnbxXPZXrSGbkmd13wy",
+    "symbol": "DELL",
+    "name": "Dell Technologies - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "DELL",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "DJTu7vi8norVzdVAffgvb39VP7wjKeTsgaMBJrzfxvoF",
+    "symbol": "DJT",
+    "name": "Trump Media & Technology Group Corp. Common Stock - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "DJT",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "HiMSSzzwkZkrXJ4PGVJRdtfLaANeAztjjcgk5Dxe7Lwx",
+    "symbol": "HIMS",
+    "name": "Hims & Hers Health - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "HIMS",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "HTZsLG4zqaNvWMwXSLHH3GG5KyJpKwpBRsKVdMG6hvzP",
+    "symbol": "HTZ",
+    "name": "Hertz Global Holdings, Inc Common Stock - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "HTZ",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "BMKdM4yUxX12moFqVk195k7coMbaybd4RUKCUdm7D1Sk",
+    "symbol": "IBM",
+    "name": "International Business Machines - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "IBM",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "JNJg1znKdF712Phe7L7z52AATAvEjEytBdN2w8Lnh1Y",
+    "symbol": "JNJ",
+    "name": "Johnson & Johnson - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "JNJ",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "LMT3i1BHgixFqPUgcyteJhnEz2dpy9i3cYy4pi9BoeV",
+    "symbol": "LMT",
+    "name": "Lockheed Martin - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "LMT",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "LULUmT9VMttkfAJE236LXJcYJ2tTP7nunrSWR5G1BdS",
+    "symbol": "LULU",
+    "name": "lululemon athletica inc. - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "LULU",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "MGMuubtUEirmkhfEQdmGUh4pr7HuUdMWcZXFtpPbVJD",
+    "symbol": "MGM",
+    "name": "MGM Resorts International - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "MGM",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "PFER6ENqP8r8NF3CqVt4mFowxsin3V5MLidBNQFCC3x",
+    "symbol": "PFE",
+    "name": "Pfizer - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "PFE",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "QUBTAD8C9bMU9LvmMNgKPhrmBGbHvxpu6vfWQtThxxw",
+    "symbol": "QUBT",
+    "name": "Quantum Computing - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "QUBT",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "RBLXDGRD64AtRamHMFVcjqne3Ar7NLWtFtYNtsrf1cE",
+    "symbol": "RBLX",
+    "name": "Roblox - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "RBLX",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "RDDTGbhHwVXfyCvQMXzzowKjf5qrYBZAnehoXW83ooh",
+    "symbol": "RDDT",
+    "name": "Reddit - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "RDDT",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "RcZmt84VMJv9bDhKqmw1uWDahYrUT468VwAChTnfD8p",
+    "symbol": "RIVN",
+    "name": "Rivian Automotive - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "RIVN",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "SH55hfaipFAbwT42nQYhRoM5o5t61QpkmJ6p62vXB3m",
+    "symbol": "SHOP",
+    "name": "Shopify - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "SHOP",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "SNAPcESrvnH8yUdgeMF6xm1hym9b6hW6s8YeqeHdZFz",
+    "symbol": "SNAP",
+    "name": "Snap - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "SNAP",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "UPSqUeMHcWbkdg784XuBUEF9DtySSnW9ur5LAVdcuB9",
+    "symbol": "UPS",
+    "name": "United Parcel Service - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "UPS",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "SPHRp8cZaSQBTp1KMNP4V1X821SXhXWt4Q2yLdyHzju",
+    "symbol": "SPHR",
+    "name": "Sphere Entertainment Co. - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "SPHR",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "PEAQjk7SRS6rXHVFFmpRr7zrC4g5ZuEebpwTxvaLr3b",
+    "symbol": "PEAQ",
+    "name": "peaq",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "NKEda5nHhNGgjrE9nDdMvaEmkmJ96qqxzBVZEcKmjSg",
+    "symbol": "NKE",
+    "name": "NIKE - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": null,
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "NKE",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "DoGEV7LASBkQbibMc5k5vKnTZoMg423GpJ5QtJEGfm7R",
+    "symbol": "DOGE",
+    "name": "Dogecoin",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "ARBzQTYDCW2KnVEjs1Mc81LekB1ibVFZKbSVmorkoT9d",
+    "symbol": "ARB",
+    "name": "Arbitrum",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "AMC1qwR9KhiyrQBRPrxnfo4JfMeMZqEBvt5tgTytNNoc",
+    "symbol": "AMC",
+    "name": "AMC Entertainment - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "AMC",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "GPRR2u6NS5yBQHWGauoJ9HXgjrTH8dDsrBfTV5zAYvDH",
+    "symbol": "GPRO",
+    "name": "GoPro - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "GPRO",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "poNSfquKq512ApeYjVghwViSun4x1MhCqHVH2Paq4jN",
+    "symbol": "PONS",
+    "name": "Pons",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "MRVLSjkR2ceUBukujaD3xCyHP1H3B2SzpsNTZF546jo",
+    "symbol": "MRVL",
+    "name": "Marvell Technology - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "MRVL",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "LLYuwZ33keFihgwoxXsBawy31AiRFLFSva32TYq5TvD",
+    "symbol": "LLY",
+    "name": "Eli Lilly and Company - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "LLY",
+      "currency": "USD",
+      "mic": "XNYS"
+    }
+  },
+  {
+    "mint": "MRNAzXzhNcaEXJPibHEn8cd4vyekCDiivTyEwswLUCT",
+    "symbol": "MRNA",
+    "name": "Moderna - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "MRNA",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "NBiSF3UaVUFtRzHwAfxyHsBCAZWGEKnMpewAE4oh7BG",
+    "symbol": "NBIS",
+    "name": "Nebius Group N.V. - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "NBIS",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "TTWofwAge91oFhZs7kpQdyrVRkmevgM88xijGvQFbKo",
+    "symbol": "TTWO",
+    "name": "Take-Two Interactive Software - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "TTWO",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "MSTRdWXMeZxdE8osAQy3fA4rvTY5rgummDSMEx6U7Nz",
+    "symbol": "MSTR",
+    "name": "Strategy - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "MSTR",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "iNTCy1qTsUEZQe3DSocLz1ZXXai34Gdw8THQh5rxFaF",
+    "symbol": "INTC",
+    "name": "Intel - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "INTC",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "HooDYv5RewLRiMLnEVq3VJqdqxhuE6c5eYvqejMC3e9A",
+    "symbol": "HOOD",
+    "name": "Robinhood Markets - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "HOOD",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "SKHYhSjuRWHgikq8eRKbtBbpABgJSkd7ytQV14i9EQ3",
+    "symbol": "SKHY",
+    "name": "SK Hynix - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "SKHY",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "CashcatZMRn4Jv8sPQZUSsbTLi2PcPe1ssqbHcnaJqSS",
+    "symbol": "CASHCAT",
+    "name": "Cash Cat",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "Morpho2VPeTr2E1Jx6monxCzF7mqwUnjz74RdwLXYyP",
+    "symbol": "MORPHO",
+    "name": "Morpho",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "SLXdx4BUt2v9uJQNzWqSfzTJ9UKLUDsvxHFMEEdrfgq",
+    "symbol": "SLX",
+    "name": "Solstice",
+    "decimals": 6,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "BoTx8y9ynfdxf5ZjWtCoBVkff52qKA82ysaLU8ZM6d8T",
+    "symbol": "BOT",
+    "name": "RoboStrategy - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "BOT",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "DRAMjSWR7HRfJKjRkvQWYL2bcaejaVhuxEcjf4pAY4Cw",
+    "symbol": "DRAM",
+    "name": "Roundhill Memory ETF - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "DRAM",
+      "currency": "USD",
+      "mic": "BATS"
+    }
+  },
+  {
+    "mint": "5GgRAEmv8ZxF2PR5hY72Qs5x1bnQ6UK2RbTPoqJ3wSwW",
+    "symbol": "PAXG",
+    "name": "PAX Gold",
+    "decimals": 6,
+    "assetClass": "commodity",
+    "issuer": null,
+    "tokenProgram": "token-2022",
+    "linkedStock": null
+  },
+  {
+    "mint": "SNDKbwMUQvZhnLnxLduradgLHG5KrPuKwpnrkkGRhfH",
+    "symbol": "SNDK",
+    "name": "SanDisk - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "SNDK",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "MUxEsUKSMACyw5fZf68wxf5FLnZVhtU9CwH8uNNGay1",
+    "symbol": "MU",
+    "name": "Micron Technology - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "MU",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "SPCXxcqXj6e5dJDVNovHN8744zkbhM2bYudU45BimGb",
+    "symbol": "SPCX",
+    "name": "SpaceX - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": {
+      "ticker": "SPCX",
+      "currency": "USD",
+      "mic": "XNAS"
+    }
+  },
+  {
+    "mint": "SV151D5pjygAKA8aJJcKzm4wFnRX5G92Fye94jQJk7g",
+    "symbol": "SV151",
+    "name": "Scarlet & Violet 151",
+    "decimals": 6,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "Dst93spXQEXxFzwYbFrQRnFYBYpw7AzB2QyALEeP4NGQ",
+    "symbol": "AFC",
+    "name": "Arsenal FC",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "5eyib4qghYGHNh7VvxSFGYLFJSanjq9hug9fR52kksnm",
+    "symbol": "PSG",
+    "name": "Paris Saint-Germain",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "Bi11Je4MH3PpyCNiuTAepRbsA5U6DK3DJy79ZFthddX",
+    "symbol": "BILL",
+    "name": "Billions Network",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "uniHfuPhEQSrtpzXpJZDCSq53yaejKKpNhFUiKoHKHV",
+    "symbol": "UNI",
+    "name": "Uniswap",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "72QvBVwpxqmheEPfaCwWSWqEFsUy3rhWt6JhQBMNTwD1",
+    "symbol": "ENA",
+    "name": "Ethena",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "taoC6xyv2v8tDLcev4uaGUgV4vdQsWJrGft2kcBRrBY",
+    "symbol": "TAO",
+    "name": "Bittensor",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "megaA5QDK1qLXtjpvg9oCFMvxT9d5BCMrVTBddnM5kV",
+    "symbol": "MEGA",
+    "name": "MegaETH",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "6eftxVbSAunVEoxUWdGhPdxg5UdsJ8Wkwy5w5YFuxouw",
+    "symbol": "CHZ",
+    "name": "Chiliz",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "AavE1kKKnesPw4MuRJmJ9jZs9QzEE8CPxQ3ViczUDfc1",
+    "symbol": "AAVE",
+    "name": "Aave",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "BWsnyEa1XtsNRdgPaDoA1WVUonF7BBGZTd2zc72NQsWT",
+    "symbol": "BLEND",
+    "name": "Fluent",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "token-2022",
+    "linkedStock": null
+  },
+  {
+    "mint": "chipCAT7vi5CZtbZsn9z7iMPXvFwyAnKz3QFu8XVuHm",
+    "symbol": "CHIP",
+    "name": "USD.AI",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "suifhC9gU1VbJAPYPTBkHJyyyStKGLLYPVDTmPoqbvA",
+    "symbol": "SUI",
+    "name": "Sui",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "BPxxfRCXkUVhig4HS1Lh7kZqV6SPJhzfEk4x6fVBjPCy",
+    "symbol": "BP",
+    "name": "Backpack",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "avaxGHCq3T7hoxd73oY2KY9hJSTaeMibXvHy5KNzh5D",
+    "symbol": "AVAX",
+    "name": "Avalanche",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "inxKXw9V2NDZE7hDijzpJaKKUb97NEPJDTCEEiYg4yY",
+    "symbol": "INX",
+    "name": "Infinex",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "98sMhvDwXj1RQi5c5Mndm3vPe9cBqPrbLaufMXFNMh5g",
+    "symbol": "HYPE",
+    "name": "Hyperliquid",
+    "decimals": 9,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "EicWvteVi2fWepEzS3FYWsnuPoP6caZfjnKqNvydLjCH",
+    "symbol": "LIT",
+    "name": "Lighter",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
+    "symbol": "WBTC",
+    "name": "Wrapped Bitcoin",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+    "symbol": "WETH",
+    "name": "Wrapped Ether",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "CrAr4RRJMBVwRsZtT62pEhfA9H5utymC2mVx8e7FreP2",
+    "symbol": "MON",
+    "name": "Monad",
+    "decimals": 8,
+    "assetClass": "crypto",
+    "issuer": null,
+    "tokenProgram": "spl-token",
+    "linkedStock": null
+  },
+  {
+    "mint": "XYZdVZ8jwqZCGN4XR7CiGkeWggo5huk7kNuXaCVs4nY",
+    "symbol": "XYZ",
+    "name": "Block - Backpack Securities",
+    "decimals": 6,
+    "assetClass": "stock",
+    "issuer": "backpack_securities",
+    "tokenProgram": "token-2022",
+    "linkedStock": null
+  }
+]
