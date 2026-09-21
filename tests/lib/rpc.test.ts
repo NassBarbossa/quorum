@@ -53,7 +53,7 @@ describe('RpcClient', () => {
   it('callHistorical appends the configured historical parameter, not minContextSlot', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true, status: 200,
-      json: async () => ({ jsonrpc: '2.0', id: 1, result: { ok: true } }),
+      json: async () => ({ jsonrpc: '2.0', id: 1, result: { context: { slot: 12345 }, ok: true } }),
     })
     const client = new RpcClient('https://rpc.example', { fetchImpl: fetchMock as never, baseDelayMs: 1, minIntervalMs: 0 })
     await client.callHistorical('getAccountInfo', ['MINT'], 12345, z.object({ ok: z.boolean() }))
@@ -76,6 +76,31 @@ describe('RpcClient', () => {
       .rejects.toThrow(/pinned to slot 12345.*answered from slot 999999/s)
   })
 
+  it('callHistorical throws when the response carries no context block', async () => {
+    // Every method pinned this way returns a context, so a missing one is abnormal.
+    // Passing it over as "nothing to check" leaves head state indistinguishable from
+    // an honest historical read — the hole this guard exists to close.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ jsonrpc: '2.0', id: 1, result: { value: { ok: true } } }),
+    })
+    const client = new RpcClient('https://rpc.example', { fetchImpl: fetchMock as never, baseDelayMs: 1, minIntervalMs: 0 })
+    const schema = z.object({ value: z.object({ ok: z.boolean() }) })
+    await expect(client.callHistorical('getAccountInfo', ['MINT'], 12345, schema))
+      .rejects.toThrow(/no readable context block/i)
+  })
+
+  it('callHistorical throws when the context slot is not an integer', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ jsonrpc: '2.0', id: 1, result: { context: { slot: 'head' }, value: { ok: true } } }),
+    })
+    const client = new RpcClient('https://rpc.example', { fetchImpl: fetchMock as never, baseDelayMs: 1, minIntervalMs: 0 })
+    const schema = z.object({ value: z.object({ ok: z.boolean() }) })
+    await expect(client.callHistorical('getAccountInfo', ['MINT'], 12345, schema))
+      .rejects.toThrow(/no readable context block/i)
+  })
+
   it('callHistorical accepts a response whose context reports the requested slot', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true, status: 200,
@@ -90,7 +115,7 @@ describe('RpcClient', () => {
   it('callHistorical honours a provider-specific parameter shape', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true, status: 200,
-      json: async () => ({ jsonrpc: '2.0', id: 1, result: { ok: true } }),
+      json: async () => ({ jsonrpc: '2.0', id: 1, result: { context: { slot: 777 }, ok: true } }),
     })
     const client = new RpcClient('https://rpc.example', {
       fetchImpl: fetchMock as never, baseDelayMs: 1, minIntervalMs: 0,

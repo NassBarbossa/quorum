@@ -101,12 +101,25 @@ export class RpcClient {
    * parameter has another name — answers from head and admits it only in its context
    * block. On a quiet mint every check downstream would still agree and we would
    * publish today's state as the record date's. So the answer's own slot is verified
-   * against the one we asked for, and a mismatch is a refusal.
+   * against the one we asked for, and anything but a match is a refusal — including a
+   * response that carries no readable context at all, which proves nothing about where
+   * it came from.
    */
   async callHistorical<T>(method: string, params: unknown[], slot: number, schema: ZodType<T>): Promise<T> {
     const { data, raw } = await this.execute(method, [...params, this.historicalParam(slot)], schema)
     const ctx = ContextSchema.safeParse(raw)
-    if (ctx.success && ctx.data.context.slot !== slot) {
+    if (!ctx.success) {
+      // Every method pinned this way returns a context, so its absence is abnormal
+      // rather than normal. Waving it through as "nothing to check" would reopen the
+      // exact hole this guard closes: an endpoint that ignores the slot parameter
+      // answers from head and omits or mangles the context on the way.
+      throw new Error(
+        `RPC ${method} was pinned to slot ${slot} but answered with no readable context ` +
+        `block, so the slot it was served from cannot be confirmed. Refusing to treat an ` +
+        `unprovable read as history.`
+      )
+    }
+    if (ctx.data.context.slot !== slot) {
       throw new Error(
         `RPC ${method} was pinned to slot ${slot} but the provider answered from slot ` +
         `${ctx.data.context.slot}. The endpoint is ignoring the historical parameter; ` +
