@@ -658,6 +658,13 @@ describe('recordDateToInstant', () => {
   it('rejects a malformed date', () => {
     expect(() => recordDateToInstant('06/15/2026')).toThrow(/YYYY-MM-DD/)
   })
+
+  it('rejects a well-formed but impossible calendar date instead of rolling it over', () => {
+    // Date.UTC would turn these into 2027-02-14 and 2027-03-01 respectively,
+    // pinning a slot weeks away from the date the filing actually named.
+    expect(() => recordDateToInstant('2026-13-45')).toThrow(/not a real calendar date/)
+    expect(() => recordDateToInstant('2027-02-29')).toThrow(/not a real calendar date/)
+  })
 })
 
 /**
@@ -738,16 +745,28 @@ const ZONE = 'America/New_York'
  */
 export function recordDateToInstant(date: string): Date {
   if (!RECORD_DATE_RE.test(date)) throw new Error(`Record date must be YYYY-MM-DD, got "${date}"`)
+
+  const year = Number(date.slice(0, 4))
+  const month = Number(date.slice(5, 7))
+  const day = Number(date.slice(8, 10))
+
+  // The regex only checks shape. Date.UTC silently rolls an impossible date over —
+  // "2026-13-45" becomes 2027-02-14 — which would pin a slot weeks from the one the
+  // filing named, with no error. Reject anything that does not round-trip.
+  const roundTrip = new Date(Date.UTC(year, month - 1, day))
+  if (
+    roundTrip.getUTCFullYear() !== year ||
+    roundTrip.getUTCMonth() !== month - 1 ||
+    roundTrip.getUTCDate() !== day
+  ) {
+    throw new Error(`Record date "${date}" is not a real calendar date`)
+  }
+
   // Find the UTC offset New York had on that day by formatting a probe instant in that zone.
   const probe = new Date(`${date}T12:00:00Z`)
   const offsetMinutes = zoneOffsetMinutes(probe, ZONE)
-  const utcMillis = Date.UTC(
-    Number(date.slice(0, 4)),
-    Number(date.slice(5, 7)) - 1,
-    Number(date.slice(8, 10)),
-    CLOSE_OF_BUSINESS_HOUR,
-    0, 0, 0,
-  ) - offsetMinutes * 60_000
+  const utcMillis = Date.UTC(year, month - 1, day, CLOSE_OF_BUSINESS_HOUR, 0, 0, 0)
+    - offsetMinutes * 60_000
   return new Date(utcMillis)
 }
 
@@ -843,7 +862,7 @@ export async function pinSlot(rpc: RpcClient, instant: Date, opts: PinOptions = 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/slot/pin.test.ts`
-Expected: PASS, 7 tests
+Expected: PASS, 8 tests
 
 - [ ] **Step 5: Commit**
 
