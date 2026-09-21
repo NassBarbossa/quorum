@@ -1914,7 +1914,6 @@ const MINT = 'AMD8XwJXgQ9WV45Wyj9yFLejxzf2J6VM1PJY8bJEjeES'
 function writeSnapshot(root: string) {
   const dir = mkdtempSync(join(tmpdir(), 'quorum-'))
   const path = join(dir, 'snapshot.json')
-  writeSnapshot.lastPath = path
   writeFileSync(path, JSON.stringify({
     mint: MINT, slot: 100, blockTime: 1_700_000_000, decimals: 6, multiplier: 1,
     holders: [
@@ -1925,7 +1924,6 @@ function writeSnapshot(root: string) {
   }, null, 2))
   return path
 }
-writeSnapshot.lastPath = ''
 
 function realRoot() {
   const rows = sortLeaves([
