@@ -82,7 +82,9 @@ export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot>
   if (!result.agree || !supplyMatches) {
     return {
       mint, slot, blockTime, decimals: asset.decimals, multiplier,
-      holders: [], excluded, sourcesAgree: result.agree, supply: supplyReport, merkleRoot: null,
+      // `holders: null`, not []: an empty array reads as "nobody held this mint",
+      // which is a shaped zero. The refusal says there is no answer, like merkleRoot.
+      holders: null, excluded, sourcesAgree: result.agree, supply: supplyReport, merkleRoot: null,
     }
   }
 

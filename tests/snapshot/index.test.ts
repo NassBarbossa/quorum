@@ -84,6 +84,8 @@ describe('takeSnapshot detectors', () => {
     expect(snap.sourcesAgree).toBe(false)
     expect(snap.supply.matches).toBe(true)
     expect(snap.merkleRoot).toBeNull()
+    // Not []: an empty array reads as "nobody held this mint", which is a shaped zero.
+    expect(snap.holders).toBeNull()
   })
 
   it('withholds the root when the replayed balances do not sum to total supply', async () => {

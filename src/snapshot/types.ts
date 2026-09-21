@@ -6,7 +6,7 @@ export type HolderBalance = {
 
 export type Exclusion = {
   address: string
-  reason: 'program-owned' | 'burn' | 'mint-authority'
+  reason: 'program-owned' | 'burn'
 }
 
 export type SupplyCheck = {
@@ -21,12 +21,9 @@ export type Snapshot = {
   blockTime: number
   decimals: number
   multiplier: number
-  holders: HolderBalance[]
+  holders: HolderBalance[] | null   // null when no answer was published; never [] for that
   excluded: Exclusion[]
   sourcesAgree: boolean
   supply: SupplyCheck
   merkleRoot: string | null   // null while sourcesAgree is false or supply.matches is false
 }
-
-/** Returned instead of a number when a value could not be read. Construction rule 3. */
-export type Unreadable = { unreadable: true; reason: string }
