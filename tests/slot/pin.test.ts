@@ -18,33 +18,57 @@ describe('recordDateToInstant', () => {
   })
 })
 
+/**
+ * Synthetic chain: slot N has block_time = 1_700_000_000 + N, except inside
+ * `gaps`, which are ranges of skipped slots that produced no block at all.
+ * Solana skips slots routinely and can skip hundreds consecutively during
+ * congestion, so gaps are the normal case, not an exotic one.
+ */
+function chainMock(opts: { tip: number; gaps?: [number, number][] }) {
+  const skipped = (s: number) => (opts.gaps ?? []).some(([a, b]) => s >= a && s <= b)
+  return {
+    call: vi.fn(async (method: string, params: unknown[]) => {
+      if (method === 'getSlot') return opts.tip
+      if (method === 'getBlocks') {
+        const [start, end] = params as [number, number]
+        const out: number[] = []
+        for (let s = start; s <= end; s++) if (!skipped(s)) out.push(s)
+        return out
+      }
+      if (method === 'getBlockTime') {
+        const s = params[0] as number
+        return skipped(s) ? null : 1_700_000_000 + s
+      }
+      throw new Error(`unexpected ${method}`)
+    }),
+  }
+}
+
 describe('pinSlot', () => {
   it('returns the last slot at or before the target instant', async () => {
-    // Synthetic chain: slot N has block_time = 1_700_000_000 + N
-    const target = new Date((1_700_000_500) * 1000)
-    const rpc = {
-      call: vi.fn(async (method: string, params: unknown[]) => {
-        if (method === 'getSlot') return 1_000
-        if (method === 'getBlockTime') {
-          const slot = params[0] as number
-          return 1_700_000_000 + slot
-        }
-        throw new Error(`unexpected ${method}`)
-      }),
-    }
-    const slot = await pinSlot(rpc as never, target, { lowerBound: 0 })
-    expect(slot).toBe(500)
+    const rpc = chainMock({ tip: 1_000 })
+    const target = new Date(1_700_000_500 * 1000)
+    expect(await pinSlot(rpc as never, target, { lowerBound: 0 })).toBe(500)
+  })
+
+  it('skips back past a long run of skipped slots instead of discarding the answer', async () => {
+    // Slots 301-700 produced no block. The true answer is 300: it is the highest
+    // slot that both has a block and whose time is at or before the target.
+    const rpc = chainMock({ tip: 1_000, gaps: [[301, 700]] })
+    const target = new Date(1_700_000_500 * 1000)
+    expect(await pinSlot(rpc as never, target, { lowerBound: 0 })).toBe(300)
   })
 
   it('throws when the target instant is in the future rather than guessing', async () => {
-    const rpc = {
-      call: vi.fn(async (method: string, params: unknown[]) => {
-        if (method === 'getSlot') return 1_000
-        if (method === 'getBlockTime') return 1_700_000_000 + (params[0] as number)
-        throw new Error(`unexpected ${method}`)
-      }),
-    }
-    const future = new Date((1_700_002_000) * 1000)
+    const rpc = chainMock({ tip: 1_000 })
+    const future = new Date(1_700_002_000 * 1000)
     await expect(pinSlot(rpc as never, future, { lowerBound: 0 })).rejects.toThrow(/future|not yet/i)
+  })
+
+  it('throws rather than returning slot 0 when no block sits at or before the target', async () => {
+    // Every slot in range is skipped except the tip, whose time is after the target.
+    const rpc = chainMock({ tip: 1_000, gaps: [[0, 999]] })
+    const target = new Date(1_700_000_500 * 1000)
+    await expect(pinSlot(rpc as never, target, { lowerBound: 0 })).rejects.toThrow(/never confirmed|no solana block/i)
   })
 })

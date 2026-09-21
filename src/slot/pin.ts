@@ -40,44 +40,74 @@ function zoneOffsetMinutes(at: Date, timeZone: string): number {
 
 const SlotSchema = z.number().int().nonnegative()
 const BlockTimeSchema = z.number().int().nullable()
+const BlocksSchema = z.array(z.number().int())
 
 export type PinOptions = { lowerBound?: number }
 
 /**
- * Binary search for the highest slot whose block_time is at or before `instant`.
- * Skipped slots return a null block_time; we walk down until we find a real block.
+ * Highest slot at or below `slot` that actually produced a block.
+ *
+ * Uses getBlocks rather than probing getBlockTime one slot at a time. Solana
+ * skips slots routinely and can skip hundreds consecutively under congestion or
+ * an outage; a fixed probe window that gave up after N slots would make the
+ * caller discard a range that still held the answer, returning a wrong slot with
+ * no error. Every weight in the snapshot hangs off this number, so the window
+ * widens until a block is found or `floor` is reached. A null return therefore
+ * means there is genuinely no block in [floor, slot].
  */
+async function highestBlockAtOrBelow(
+  rpc: RpcClient, slot: number, floor: number,
+): Promise<{ slot: number; time: number } | null> {
+  if (slot < floor) return null
+  let window = 1_000
+  for (;;) {
+    const start = Math.max(floor, slot - window)
+    const blocks = await rpc.call('getBlocks', [start, slot], BlocksSchema)
+    const found = blocks.at(-1)
+    if (found !== undefined) {
+      const time = await rpc.call('getBlockTime', [found], BlockTimeSchema)
+      if (time === null) {
+        throw new Error(`Slot ${found} was listed as a confirmed block but has no block time`)
+      }
+      return { slot: found, time }
+    }
+    if (start === floor) return null
+    window *= 8
+  }
+}
+
+/** Binary search for the highest slot whose block_time is at or before `instant`. */
 export async function pinSlot(rpc: RpcClient, instant: Date, opts: PinOptions = {}): Promise<number> {
   const targetSeconds = Math.floor(instant.getTime() / 1000)
-  let low = opts.lowerBound ?? 0
+  const floor = opts.lowerBound ?? 0
+  let low = floor
   let high = await rpc.call('getSlot', [], SlotSchema)
 
-  const highTime = await blockTimeAtOrBelow(rpc, high, low)
-  if (highTime === null) throw new Error(`Could not read a block time near the chain tip (slot ${high})`)
-  if (highTime.time < targetSeconds) {
+  const tip = await highestBlockAtOrBelow(rpc, high, floor)
+  if (tip === null) throw new Error(`Could not read any confirmed block between slots ${floor} and ${high}`)
+  if (tip.time < targetSeconds) {
     throw new Error(
       `Record date instant ${instant.toISOString()} is in the future relative to the chain tip ` +
-      `(latest block time ${new Date(highTime.time * 1000).toISOString()}). Not yet snapshottable.`
+      `(latest block time ${new Date(tip.time * 1000).toISOString()}). Not yet snapshottable.`
     )
   }
 
-  let best = low
+  // `best` starts null, never at the lower bound: an unresolved search must throw
+  // rather than hand back slot 0, which would read as a real answer.
+  let best: number | null = null
   while (low <= high) {
     const mid = Math.floor((low + high) / 2)
-    const found = await blockTimeAtOrBelow(rpc, mid, low)
+    const found = await highestBlockAtOrBelow(rpc, mid, low)
     if (found === null) { low = mid + 1; continue }
     if (found.time <= targetSeconds) { best = found.slot; low = found.slot + 1 }
     else { high = found.slot - 1 }
   }
-  return best
-}
 
-async function blockTimeAtOrBelow(
-  rpc: RpcClient, slot: number, floor: number,
-): Promise<{ slot: number; time: number } | null> {
-  for (let s = slot; s >= floor && s > slot - 200; s--) {
-    const t = await rpc.call('getBlockTime', [s], BlockTimeSchema)
-    if (t !== null) return { slot: s, time: t }
+  if (best === null) {
+    throw new Error(
+      `No Solana block at or before ${instant.toISOString()} exists at or above slot ${floor}. ` +
+      `Refusing to return a slot that was never confirmed.`
+    )
   }
-  return null
+  return best
 }
