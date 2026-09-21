@@ -4,6 +4,8 @@ import { takeSnapshot } from '../../src/snapshot/index.js'
 import { Registry } from '../../src/registry/store.js'
 
 const MINT = 'AMD8XwJXgQ9WV45Wyj9yFLejxzf2J6VM1PJY8bJEjeES'
+const ALICE_ATA = 'A1iceAta111111111111111111111111111111111111'
+const POOL_ATA = 'Poo1Ata1111111111111111111111111111111111111'
 const registry = new Registry([{
   mint: MINT, symbol: 'AMD', name: 'AMD', decimals: 6,
   assetClass: 'stock', issuer: 'backpack_securities',
@@ -40,7 +42,13 @@ function standardMock() {
         return (params[1] as { before?: string }).before ? [] : [{ signature: 'sig1', slot: 900 }]
       }
       if (method === 'getTransaction') {
-        return { slot: 900, meta: { postTokenBalances: [{ mint: MINT, owner: 'alice', uiTokenAmount: { amount: '1000' } }] } }
+        return {
+          slot: 900,
+          transaction: { message: { accountKeys: [{ pubkey: ALICE_ATA }] } },
+          meta: { postTokenBalances: [
+            { mint: MINT, owner: 'alice', accountIndex: 0, uiTokenAmount: { amount: '1000' } },
+          ] },
+        }
       }
       throw new Error(`unexpected ${method}`)
     }),
@@ -122,10 +130,14 @@ function poolMock(poolOnChain: string) {
         return (params[1] as { before?: string }).before ? [] : [{ signature: 'sig1', slot: 900 }]
       }
       if (method === 'getTransaction') {
-        return { slot: 900, meta: { postTokenBalances: [
-          { mint: MINT, owner: 'alice', uiTokenAmount: { amount: '1000' } },
-          { mint: MINT, owner: POOL, uiTokenAmount: { amount: '4000' } },
-        ] } }
+        return {
+          slot: 900,
+          transaction: { message: { accountKeys: [{ pubkey: ALICE_ATA }, { pubkey: POOL_ATA }] } },
+          meta: { postTokenBalances: [
+            { mint: MINT, owner: 'alice', accountIndex: 0, uiTokenAmount: { amount: '1000' } },
+            { mint: MINT, owner: POOL, accountIndex: 1, uiTokenAmount: { amount: '4000' } },
+          ] },
+        }
       }
       throw new Error(`unexpected ${method}`)
     }),
