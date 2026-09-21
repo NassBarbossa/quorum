@@ -1,4 +1,11 @@
-import type { ZodType } from 'zod'
+import { z, type ZodType } from 'zod'
+
+/**
+ * Every Solana RPC that can be pinned to a slot answers with a context block naming
+ * the slot it actually read at. Validated on its own, against the raw result, so a
+ * caller's schema never has to carry it.
+ */
+const ContextSchema = z.object({ context: z.object({ slot: z.number().int() }) })
 
 export type RpcOptions = {
   fetchImpl?: typeof fetch
@@ -38,6 +45,14 @@ export class RpcClient {
   }
 
   async call<T>(method: string, params: unknown[], schema: ZodType<T>): Promise<T> {
+    return (await this.execute(method, params, schema)).data
+  }
+
+  /** One validated call, returning the raw result alongside so callHistorical can
+   *  check the provider's context block without every caller's schema changing. */
+  private async execute<T>(
+    method: string, params: unknown[], schema: ZodType<T>,
+  ): Promise<{ data: T; raw: unknown }> {
     await this.throttle()
     let lastErr: unknown
     for (let attempt = 0; attempt < this.maxAttempts; attempt++) {
@@ -67,7 +82,7 @@ export class RpcClient {
       if (!parsed.success) {
         throw new Error(`RPC ${method} schema mismatch: ${parsed.error.issues.map(i => i.path.join('.')).join(', ')}`)
       }
-      return parsed.data
+      return { data: parsed.data, raw: body.result }
     }
     throw lastErr instanceof Error ? lastErr : new Error(`RPC ${method} failed after ${this.maxAttempts} attempts`)
   }
@@ -80,9 +95,25 @@ export class RpcClient {
    * label — wrong without being loud, which is the worst failure this project has.
    * The parameter shape is a constructor option because providers differ; Task 7 pins
    * it against the real archive API without touching a single caller.
+   *
+   * Asking is not enough: a Solana RPC silently ignores config fields it does not
+   * recognise, so an endpoint that is not an archive — or one whose historical
+   * parameter has another name — answers from head and admits it only in its context
+   * block. On a quiet mint every check downstream would still agree and we would
+   * publish today's state as the record date's. So the answer's own slot is verified
+   * against the one we asked for, and a mismatch is a refusal.
    */
   async callHistorical<T>(method: string, params: unknown[], slot: number, schema: ZodType<T>): Promise<T> {
-    return this.call(method, [...params, this.historicalParam(slot)], schema)
+    const { data, raw } = await this.execute(method, [...params, this.historicalParam(slot)], schema)
+    const ctx = ContextSchema.safeParse(raw)
+    if (ctx.success && ctx.data.context.slot !== slot) {
+      throw new Error(
+        `RPC ${method} was pinned to slot ${slot} but the provider answered from slot ` +
+        `${ctx.data.context.slot}. The endpoint is ignoring the historical parameter; ` +
+        `refusing to read head state as history.`
+      )
+    }
+    return data
   }
 
   private async throttle(): Promise<void> {

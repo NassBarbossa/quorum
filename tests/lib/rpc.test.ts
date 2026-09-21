@@ -62,6 +62,31 @@ describe('RpcClient', () => {
     expect(JSON.stringify(sent)).not.toMatch(/minContextSlot/)
   })
 
+  it('callHistorical throws when the provider answers from a different slot', async () => {
+    // An endpoint that is not an archive ignores the slot field without complaint and
+    // answers from head. Nothing downstream would notice on a quiet mint: every source
+    // would agree, and we would publish today's state under the record date's label.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ jsonrpc: '2.0', id: 1, result: { context: { slot: 999_999 }, value: { ok: true } } }),
+    })
+    const client = new RpcClient('https://rpc.example', { fetchImpl: fetchMock as never, baseDelayMs: 1, minIntervalMs: 0 })
+    const schema = z.object({ value: z.object({ ok: z.boolean() }) })
+    await expect(client.callHistorical('getAccountInfo', ['MINT'], 12345, schema))
+      .rejects.toThrow(/pinned to slot 12345.*answered from slot 999999/s)
+  })
+
+  it('callHistorical accepts a response whose context reports the requested slot', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ jsonrpc: '2.0', id: 1, result: { context: { slot: 12345 }, value: { ok: true } } }),
+    })
+    const client = new RpcClient('https://rpc.example', { fetchImpl: fetchMock as never, baseDelayMs: 1, minIntervalMs: 0 })
+    const schema = z.object({ value: z.object({ ok: z.boolean() }) })
+    await expect(client.callHistorical('getAccountInfo', ['MINT'], 12345, schema))
+      .resolves.toEqual({ value: { ok: true } })
+  })
+
   it('callHistorical honours a provider-specific parameter shape', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true, status: 200,
