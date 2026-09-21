@@ -1333,6 +1333,41 @@ describe('replayHolders', () => {
     expect(holders.get('alice')).toBe(1_000n)  // sig3 is past the target slot
     expect(holders.get('bob')).toBe(500n)
   })
+
+  it('applies same-slot transactions oldest-first, not in RPC order', async () => {
+    // getSignaturesForAddress returns newest first, including within one slot, and
+    // a slot holds many transactions. Post-balances are absolute, so the newest
+    // transaction in a slot must be applied LAST or an older one overwrites it.
+    const signatures = [
+      { signature: 'newer', slot: 100 },
+      { signature: 'older', slot: 100 },
+    ]
+    const txs: Record<string, unknown> = {
+      older: { slot: 100, meta: { postTokenBalances: [{ mint: MINT, owner: 'alice', uiTokenAmount: { amount: '111' } }] } },
+      newer: { slot: 100, meta: { postTokenBalances: [{ mint: MINT, owner: 'alice', uiTokenAmount: { amount: '999' } }] } },
+    }
+    const rpc = {
+      call: vi.fn(async (method: string, params: unknown[]) => {
+        if (method === 'getSignaturesForAddress') {
+          return (params[1] as { before?: string }).before ? [] : signatures
+        }
+        if (method === 'getTransaction') return txs[params[0] as string]
+        throw new Error(`unexpected ${method}`)
+      }),
+    }
+    const holders = await replayHolders(rpc as never, MINT, 200)
+    expect(holders.get('alice')).toBe(999n)
+  })
+
+  it('throws rather than looping when the endpoint ignores the before cursor', async () => {
+    const rpc = {
+      call: vi.fn(async (method: string) => {
+        if (method === 'getSignaturesForAddress') return [{ signature: 'same', slot: 10 }]
+        throw new Error(`unexpected ${method}`)
+      }),
+    }
+    await expect(replayHolders(rpc as never, MINT, 100)).rejects.toThrow(/ignoring "before"|same page twice/i)
+  })
 })
 ```
 
@@ -1417,12 +1452,26 @@ export async function replayHolders(
     )
     if (page.length === 0) break
     signatures.push(...page)
-    before = page[page.length - 1]!.signature
+    const nextBefore = page[page.length - 1]!.signature
+    if (nextBefore === before) {
+      // The endpoint returned the same page again, so it is ignoring the cursor.
+      // Without this guard the loop runs forever and the snapshot never completes.
+      throw new Error(
+        `getSignaturesForAddress returned the same page twice at cursor ${before}; ` +
+        `the endpoint is ignoring "before". Refusing to loop.`
+      )
+    }
+    before = nextBefore
   }
 
-  // getSignaturesForAddress returns newest first; replay needs oldest first.
+  // getSignaturesForAddress returns newest first — including *within* a single slot,
+  // which holds many transactions. Array.sort is stable, so sorting by slot alone
+  // would preserve that newest-first order inside each slot and, because
+  // post-balances are absolute, let an older transaction overwrite a newer one.
+  // Reverse first, then the stable sort keeps each slot's transactions oldest-first.
   const ordered = signatures
     .filter(s => s.slot <= slot)
+    .reverse()
     .sort((a, b) => a.slot - b.slot)
 
   const state = new Map<string, bigint>()
@@ -1443,7 +1492,7 @@ export async function replayHolders(
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/snapshot/sources/replay.test.ts`
-Expected: PASS, 5 tests
+Expected: PASS, 7 tests
 
 - [ ] **Step 5: Commit**
 
