@@ -145,6 +145,21 @@ If they disagree, `sources_agree = false` and nothing is published.
 
 17:00 local is the convention, fixed and published, because "close of business" is stated in filings without a time and transfer agents treat it as end of business day rather than market close. Resolved per-ballot in local time rather than fixed in UTC, because US daylight saving shifts it by an hour twice a year — a fixed UTC convention would pin the wrong slot for half the year. The resolved instant and the slot are both printed on every ballot.
 
+### Voting window
+
+The record date is set by the company, typically 30–60 days before the meeting (Delaware DGCL §213: no more than 60, no fewer than 10 days). The voting window is ours to choose inside that gap.
+
+**Default: 10 days, closing at least 5 days before the meeting.**
+
+```
+Jan 6    RECORD DATE            (company sets this; balances frozen here)
+Feb 10   voting opens
+Feb 20   voting closes          → tally, attestation, submission
+Feb 25   MEETING
+```
+
+The closing margin is not cosmetic: the tally has to be computed, written on-chain, and delivered before the carrying rail's submission cutoff. A window that closes on the meeting date misses that cutoff, and the ballot silently degrades from executable to record-only.
+
 ## 8. Data model and signature format
 
 ### Canonical message
