@@ -326,7 +326,9 @@ A single `attest` instruction that fails if the PDA is already initialised. **No
 
 Separating them lets a holder prove eligibility without revealing their vote, and prove inclusion without re-deriving the snapshot.
 
-**Canonical construction:** domain-separated prefixes (`0x00` leaf, `0x01` internal node) against leaf/node confusion; leaves sorted by owner pubkey bytes for determinism; SHA-256 (syscall-available on Solana).
+**Canonical construction:** fully specified in [docs/canonical-snapshot-construction.md](../../canonical-snapshot-construction.md) — domain-separated prefixes (`0x00` leaf, `0x01` internal node, `0x02` count commitment), a `0x1f` unit separator between leaf fields, leaves sorted by owner with duplicates forbidden, each pair hashed in byte order, and the published root binding the leaf count as `SHA256(0x02 ‖ count(8, big-endian) ‖ innerTreeRoot)`. SHA-256 throughout, syscall-available on Solana.
+
+The count binding is not decoration. Pairing a lone odd node with itself gives `[a,b,c]` and `[a,b,c,c]` the same inner root, so duplicating the lexicographically-last holder's row would double that holder's weight and leave the root untouched. Adversarial review found and reproduced this; §3 of that document forbids duplicate owners as the direct defence.
 
 ### Verification path
 
@@ -345,6 +347,8 @@ Plus an independent recomputation script that rebuilds the whole tally from publ
 Stated on the page, not in small print:
 
 > It proves a given tally existed at a given time and has not changed since. **It does not prove the issuer counted anything.**
+
+And a second limit, narrower than the first and easier to overclaim. The verifier recomputes the published rows; it does not read the chain. So it cannot detect a wrong balance, a wrong multiplier, a wrong slot, or a missing holder. Until the weight check in the verification table is actually implemented, the claim we make in public is **"recompute our published rows with code that shares nothing with ours"**, never "independently verifiable". Both reference implementations are transcriptions of the same specification rather than independent derivations, so their agreement does not catch a shared misreading of it — which is exactly how the leaf-duplication flaw survived eleven reviews.
 
 ### Failure modes
 
