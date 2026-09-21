@@ -1940,10 +1940,43 @@ describe('verify-snapshot.mjs', () => {
     expect(out).toMatch(/OK/)
   })
 
-  it('exits non-zero when the published root is wrong', () => {
+  it('exits 1 and says FAIL when the published root is wrong', () => {
+    // Asserting only .toThrow() would pass for any crash at all — including the
+    // script not existing. Pin the exit code and the message so this test can only
+    // pass for the right reason.
     const path = writeSnapshot('0'.repeat(64))
-    expect(() => execFileSync('node', ['scripts/verify-snapshot.mjs', path], { encoding: 'utf8' }))
-      .toThrow()
+    let status: number | undefined
+    let stderr = ''
+    try {
+      execFileSync('node', ['scripts/verify-snapshot.mjs', path], { encoding: 'utf8', stdio: 'pipe' })
+    } catch (err) {
+      const e = err as { status?: number; stderr?: string }
+      status = e.status
+      stderr = e.stderr ?? ''
+    }
+    expect(status).toBe(1)
+    expect(stderr).toMatch(/FAIL/)
+  })
+
+  it('refuses an empty holder set with a message rather than a stack trace', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'quorum-'))
+    const path = join(dir, 'snapshot.json')
+    writeFileSync(path, JSON.stringify({
+      mint: MINT, slot: 100, blockTime: 1_700_000_000, decimals: 6, multiplier: 1,
+      holders: [], excluded: [], sourcesAgree: true, merkleRoot: '0'.repeat(64),
+    }))
+    let status: number | undefined
+    let stderr = ''
+    try {
+      execFileSync('node', ['scripts/verify-snapshot.mjs', path], { encoding: 'utf8', stdio: 'pipe' })
+    } catch (err) {
+      const e = err as { status?: number; stderr?: string }
+      status = e.status
+      stderr = e.stderr ?? ''
+    }
+    expect(status).toBe(1)
+    expect(stderr).toMatch(/no holders/i)
+    expect(stderr).not.toMatch(/at Object|at Module/)  // no stack trace
   })
 })
 ```
@@ -2025,6 +2058,14 @@ if (snap.sourcesAgree !== true) {
   process.exit(1)
 }
 
+if (!Array.isArray(snap.holders) || snap.holders.length === 0) {
+  // root() would throw 'empty leaf set' here and print a stack trace. A verifier
+  // that crashes reads as broken tooling rather than as a verdict on the file,
+  // and someone checking our work deserves a sentence, not a trace.
+  console.error(`REFUSED: this snapshot has no holders; there is nothing to verify.`)
+  process.exit(1)
+}
+
 let shareErrors = 0
 for (const holder of snap.holders) {
   const expected = sharesOf(holder.rawAmount, snap.multiplier, snap.decimals)
@@ -2052,7 +2093,7 @@ process.exit(0)
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/scripts/verify-snapshot.test.ts`
-Expected: PASS, 2 tests
+Expected: PASS, 3 tests
 
 - [ ] **Step 5: Commit**
 
