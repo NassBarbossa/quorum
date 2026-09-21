@@ -67,6 +67,14 @@ if (snap.sourcesAgree !== true) {
   process.exit(1)
 }
 
+if (!Array.isArray(snap.holders) || snap.holders.length === 0) {
+  // root() would throw 'empty leaf set' here and print a stack trace. A verifier
+  // that crashes reads as broken tooling rather than as a verdict on the file,
+  // and someone checking our work deserves a sentence, not a trace.
+  console.error(`REFUSED: this snapshot has no holders; there is nothing to verify.`)
+  process.exit(1)
+}
+
 let shareErrors = 0
 for (const holder of snap.holders) {
   const expected = sharesOf(holder.rawAmount, snap.multiplier, snap.decimals)
