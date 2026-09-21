@@ -1001,7 +1001,9 @@ export type Snapshot = {
   holders: HolderBalance[]
   excluded: Exclusion[]
   sourcesAgree: boolean
-  merkleRoot: string | null   // null while sourcesAgree is false
+  /** Replayed balances vs the mint's total supply at the slot. Detects a MISSING holder. */
+  supply: { expected: string; replayed: string; matches: boolean }
+  merkleRoot: string | null   // null unless sourcesAgree AND supply.matches
 }
 
 /** Returned instead of a number when a value could not be read. Construction rule 3. */
@@ -2139,43 +2141,84 @@ describe('takeSnapshot', () => {
       mint: 'FAKEmint1111111111111111111111111111111111', recordDate: '2026-01-06',
     })).rejects.toThrow(/not in the canonical registry/i)
   })
+})
 
+/** Standard client: chain tip, block times, and one holder (alice, 1000 raw) at slot 900. */
+function standardMock() {
+  return {
+    call: vi.fn(async (method: string, params: unknown[]) => {
+      if (method === 'getSlot') return 1_000
+      if (method === 'getBlocks') {
+        const [start, end] = params as [number, number]
+        const out: number[] = []
+        for (let s = start; s <= end; s++) out.push(s)
+        return out
+      }
+      if (method === 'getBlockTime') return 1_767_740_400 // 2026-01-06T22:00:00Z
+      if (method === 'getSignaturesForAddress') {
+        return (params[1] as { before?: string }).before ? [] : [{ signature: 'sig1', slot: 900 }]
+      }
+      if (method === 'getTransaction') {
+        return { slot: 900, meta: { postTokenBalances: [{ mint: MINT, owner: 'alice', uiTokenAmount: { amount: '1000' } }] } }
+      }
+      throw new Error(`unexpected ${method}`)
+    }),
+  }
+}
+
+/** Archive client: answers every historical read. `balance` is what it reports for
+ *  alice, `supply` is the mint's total supply at the slot. */
+function archiveMock(opts: { balance: string; supply: string }) {
+  return {
+    callHistorical: vi.fn(async (method: string) => {
+      if (method === 'getAccountInfo') {
+        return { value: { data: { parsed: { info: { decimals: 6, extensions: [] } } } } }
+      }
+      if (method === 'getMultipleAccounts') {
+        return { value: [{ owner: '11111111111111111111111111111111', executable: false }] }
+      }
+      if (method === 'getTokenSupply') return { value: { amount: opts.supply } }
+      if (method === 'getTokenAccountsByOwner') {
+        return { value: [{ account: { data: { parsed: { info: { tokenAmount: { amount: opts.balance } } } } } }] }
+      }
+      throw new Error(`unexpected ${method}`)
+    }),
+  }
+}
+
+describe('takeSnapshot detectors', () => {
   it('returns sourcesAgree=false and a null root when the sources disagree', async () => {
-    const rpc = {
-      call: vi.fn(async (method: string, params: unknown[]) => {
-        if (method === 'getSlot') return 1_000
-        if (method === 'getBlockTime') return 1_767_740_400 // 2026-01-06T22:00:00Z
-        if (method === 'getSignaturesForAddress') {
-          return (params[1] as { before?: string }).before ? [] : [{ signature: 'sig1', slot: 900 }]
-        }
-        if (method === 'getTransaction') {
-          return { slot: 900, meta: { postTokenBalances: [{ mint: MINT, owner: 'alice', uiTokenAmount: { amount: '1000' } }] } }
-        }
-        if (method === 'getMultipleAccounts') return { value: [{ owner: '11111111111111111111111111111111', executable: false }] }
-        if (method === 'getAccountInfo') return { value: { data: { parsed: { info: { decimals: 6, extensions: [] } } } } }
-        throw new Error(`unexpected ${method}`)
-      }),
+    const rpc = standardMock()
     }
-    // The archive client answers every historical read: the mint's multiplier,
-    // account ownership, and the balance check that will disagree with the replay.
-    const archiveRpc = {
-      callHistorical: vi.fn(async (method: string) => {
-        if (method === 'getAccountInfo') {
-          return { value: { data: { parsed: { info: { decimals: 6, extensions: [] } } } } }
-        }
-        if (method === 'getMultipleAccounts') {
-          return { value: [{ owner: '11111111111111111111111111111111', executable: false }] }
-        }
-        if (method === 'getTokenAccountsByOwner') {
-          // 999 against the replay's 1000 — the sources must refuse to agree.
-          return { value: [{ account: { data: { parsed: { info: { tokenAmount: { amount: '999' } } } } } }] }
-        }
-        throw new Error(`unexpected ${method}`)
-      }),
-    }
+    // 999 against the replay's 1000 — the sources must refuse to agree. Supply is
+    // set to 1000 so this test isolates the reconcile failure from the supply check.
+    const archiveRpc = archiveMock({ balance: '999', supply: '1000' })
     const snap = await takeSnapshot({ rpc: rpc as never, archiveRpc: archiveRpc as never, registry, mint: MINT, recordDate: '2026-01-06' })
     expect(snap.sourcesAgree).toBe(false)
+    expect(snap.supply.matches).toBe(true)
     expect(snap.merkleRoot).toBeNull()
+  })
+
+  it('withholds the root when the replayed balances do not sum to total supply', async () => {
+    // Both sources agree on alice's 1000, but the mint says 5000 exist. Some holder
+    // was never enumerated, so the holder set is not the truth and no root is published.
+    // This is the only detector for a plain `transfer` the mint's signature list missed.
+    const rpc = standardMock()
+    const archiveRpc = archiveMock({ balance: '1000', supply: '5000' })
+    const snap = await takeSnapshot({ rpc: rpc as never, archiveRpc: archiveRpc as never, registry, mint: MINT, recordDate: '2026-01-06' })
+    expect(snap.sourcesAgree).toBe(true)
+    expect(snap.supply).toEqual({ expected: '5000', replayed: '1000', matches: false })
+    expect(snap.merkleRoot).toBeNull()
+  })
+
+  it('publishes a root when both sources agree and supply reconciles', async () => {
+    const rpc = standardMock()
+    const archiveRpc = archiveMock({ balance: '1000', supply: '1000' })
+    const snap = await takeSnapshot({ rpc: rpc as never, archiveRpc: archiveRpc as never, registry, mint: MINT, recordDate: '2026-01-06' })
+    expect(snap.sourcesAgree).toBe(true)
+    expect(snap.supply.matches).toBe(true)
+    expect(snap.merkleRoot).toMatch(/^[0-9a-f]{64}$/)
+    expect(snap.holders).toEqual([{ owner: 'alice', rawAmount: '1000', shares: '0.001000' }])
   })
 })
 ```
@@ -2211,6 +2254,7 @@ export type TakeSnapshotOptions = {
 }
 
 const BlockTimeSchema = z.number().int().nullable()
+const TokenSupplySchema = z.object({ value: z.object({ amount: z.string() }) })
 
 export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot> {
   const { rpc, archiveRpc, registry, mint, recordDate } = opts
@@ -2234,16 +2278,35 @@ export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot>
   const multiplier = await readMultiplierAtSlot(archiveRpc, mint, slot, blockTime)
   const replayed = await replayHolders(rpc, mint, slot)
 
+  // The strongest correctness check available, and the ONLY detector for the known
+  // enumeration gap: signatures are enumerated from the mint's address, which catches
+  // `transferChecked` (the mint is in its account list) but can miss a plain `transfer`.
+  // If any holder was missed, the replayed balances will not sum to total supply.
+  // Computed BEFORE exclusions, because pools and burn addresses hold real supply.
+  const replayedTotal = [...replayed.values()].reduce((sum, amount) => sum + amount, 0n)
+  const supply = await archiveRpc.callHistorical('getTokenSupply', [mint], slot, TokenSupplySchema)
+  const expectedTotal = BigInt(supply.value.amount)
+  const supplyMatches = replayedTotal === expectedTotal
+
   const { eligible, excluded } = await classifyOwners(archiveRpc, [...replayed.keys()], slot)
   const eligibleSet = new Set(eligible)
   const filtered = new Map([...replayed].filter(([owner]) => eligibleSet.has(owner)))
 
   const result = await reconcile(filtered, owner => archiveBalanceAtSlot(archiveRpc, mint, owner, slot))
 
-  if (!result.agree) {
+  const supplyReport = {
+    expected: expectedTotal.toString(),
+    replayed: replayedTotal.toString(),
+    matches: supplyMatches,
+  }
+
+  // A root is published only when BOTH detectors pass. They catch different things:
+  // reconcile catches a WRONG balance (per owner), the supply check catches a MISSING
+  // holder (set level). Either failure means the holder set is not the truth.
+  if (!result.agree || !supplyMatches) {
     return {
       mint, slot, blockTime, decimals: asset.decimals, multiplier,
-      holders: [], excluded, sourcesAgree: false, merkleRoot: null,
+      holders: [], excluded, sourcesAgree: result.agree, supply: supplyReport, merkleRoot: null,
     }
   }
 
@@ -2259,7 +2322,7 @@ export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot>
 
   return {
     mint, slot, blockTime, decimals: asset.decimals, multiplier,
-    holders, excluded, sourcesAgree: true, merkleRoot: root,
+    holders, excluded, sourcesAgree: true, supply: supplyReport, merkleRoot: root,
   }
 }
 ```
@@ -2267,7 +2330,7 @@ export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot>
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run`
-Expected: PASS, all suites
+Expected: PASS, all suites (4 tests in this file: the registry gate plus the three detector cases)
 
 - [ ] **Step 5: Produce the golden fixture from a real mint**
 
