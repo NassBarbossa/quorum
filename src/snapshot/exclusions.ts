@@ -37,8 +37,17 @@ export async function classifyOwners(
     const res = await rpc.callHistorical('getMultipleAccounts', [chunk], slot, MultipleAccountsSchema)
     chunk.forEach((address, idx) => {
       const info = res.value[idx]
+      if (info === undefined) {
+        // The response is shorter than the request. Treating the missing tail as
+        // eligible would silently admit pool PDAs into the holder set — the exact
+        // error this function exists to prevent — so refuse rather than default.
+        throw new Error(
+          `getMultipleAccounts returned ${res.value.length} entries for ${chunk.length} addresses ` +
+          `at slot ${slot}; nothing for ${address}. Refusing to classify a partial response.`
+        )
+      }
       // A never-funded wallet has no account but can still own an ATA and can still sign.
-      if (info === null || info === undefined) { eligible.push(address); return }
+      if (info === null) { eligible.push(address); return }
       if (info.owner === SYSTEM_PROGRAM) eligible.push(address)
       else excluded.push({ address, reason: 'program-owned' })
     })

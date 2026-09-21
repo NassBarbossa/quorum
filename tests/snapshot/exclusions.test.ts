@@ -37,4 +37,13 @@ describe('classifyOwners', () => {
     const out = await classifyOwners(rpc as never, ['UnfundedWallet11111111111111111111111111111'], 100)
     expect(out.eligible).toEqual(['UnfundedWallet11111111111111111111111111111'])
   })
+
+  it('throws rather than defaulting when the response is shorter than the request', async () => {
+    // A truncated reply must not let the missing tail pass as eligible — that is
+    // how a pool PDA would end up counted as a voter.
+    const rpc = { callHistorical: vi.fn(async () => ({ value: [] })) }
+    await expect(
+      classifyOwners(rpc as never, ['Wallet1111111111111111111111111111111111111'], 100),
+    ).rejects.toThrow(/partial response/i)
+  })
 })
