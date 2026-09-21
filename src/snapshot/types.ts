@@ -9,6 +9,12 @@ export type Exclusion = {
   reason: 'program-owned' | 'burn' | 'mint-authority'
 }
 
+export type SupplyCheck = {
+  expected: string    // total supply reported by the chain at the snapshot slot
+  replayed: string    // sum of replayed balances, BEFORE exclusions
+  matches: boolean
+}
+
 export type Snapshot = {
   mint: string
   slot: number
@@ -18,7 +24,8 @@ export type Snapshot = {
   holders: HolderBalance[]
   excluded: Exclusion[]
   sourcesAgree: boolean
-  merkleRoot: string | null   // null while sourcesAgree is false
+  supply: SupplyCheck
+  merkleRoot: string | null   // null while sourcesAgree is false or supply.matches is false
 }
 
 /** Returned instead of a number when a value could not be read. Construction rule 3. */
