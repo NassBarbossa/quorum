@@ -99,3 +99,83 @@ describe('takeSnapshot detectors', () => {
     expect(snap.holders).toEqual([{ owner: 'alice', rawAmount: '1000', shares: '0.001000' }])
   })
 })
+
+const SYSTEM_PROGRAM = '11111111111111111111111111111111'
+const TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+const POOL = 'Poo1Ao9KcsGe1vaMyTjYGWDcRnMhLwrMV8bVfhCrRF2'
+
+/** One node answering both the standard and the historical reads, for a mint held by
+ *  alice and a program-owned pool. `poolOnChain` is what the archive says the pool
+ *  holds now; the replay says 4000. */
+function poolMock(poolOnChain: string) {
+  return {
+    call: vi.fn(async (method: string, params: unknown[]) => {
+      if (method === 'getSlot') return 1_000
+      if (method === 'getBlocks') {
+        const [start, end] = params as [number, number]
+        const out: number[] = []
+        for (let s = start; s <= end; s++) out.push(s)
+        return out
+      }
+      if (method === 'getBlockTime') return 1_767_736_800
+      if (method === 'getSignaturesForAddress') {
+        return (params[1] as { before?: string }).before ? [] : [{ signature: 'sig1', slot: 900 }]
+      }
+      if (method === 'getTransaction') {
+        return { slot: 900, meta: { postTokenBalances: [
+          { mint: MINT, owner: 'alice', uiTokenAmount: { amount: '1000' } },
+          { mint: MINT, owner: POOL, uiTokenAmount: { amount: '4000' } },
+        ] } }
+      }
+      throw new Error(`unexpected ${method}`)
+    }),
+    callHistorical: vi.fn(async (method: string, params: unknown[]) => {
+      if (method === 'getAccountInfo') {
+        return { value: { data: { parsed: { info: { decimals: 6, extensions: [] } } } } }
+      }
+      if (method === 'getMultipleAccounts') {
+        const addresses = params[0] as string[]
+        return { value: addresses.map(a => ({
+          owner: a === POOL ? TOKEN_PROGRAM : SYSTEM_PROGRAM, executable: false,
+        })) }
+      }
+      if (method === 'getTokenSupply') return { value: { amount: '5000' } }
+      if (method === 'getTokenAccountsByOwner') {
+        const amount = (params[0] as string) === POOL ? poolOnChain : '1000'
+        return { value: [{ account: { data: { parsed: { info: { tokenAmount: { amount } } } } } }] }
+      }
+      throw new Error(`unexpected ${method}`)
+    }),
+  }
+}
+
+describe('takeSnapshot reconciles owners it will later exclude', () => {
+  it('refuses when an excluded pool disagrees with the archive', async () => {
+    // alice 1000 + pool 4000 = 5000 = total supply, so the supply check passes: a
+    // plain `transfer` out of the pool moves tokens between owners without changing
+    // the sum. The archive says the pool holds 3000, so 1000 went to a wallet the
+    // mint's signature list never surfaced — a real holder, absent from the set.
+    // The pool's wrong balance is the ONLY place that gap shows, so reconciling
+    // just the eligible owners would publish a root with a holder missing.
+    const node = poolMock('3000')
+    const snap = await takeSnapshot({
+      rpc: node as never, archiveRpc: node as never, registry, mint: MINT, recordDate: '2026-01-06',
+    })
+    expect(snap.supply.matches).toBe(true)      // the supply detector alone would pass
+    expect(snap.sourcesAgree).toBe(false)       // reconcile caught it, at the pool
+    expect(snap.merkleRoot).toBeNull()
+  })
+
+  it('publishes without the pool once every replayed balance agrees', async () => {
+    // Same shape, but the pool really does hold its 4000. The pool is still excluded
+    // from the published set — it cannot sign, so it cannot vote — but it was checked.
+    const node = poolMock('4000')
+    const snap = await takeSnapshot({
+      rpc: node as never, archiveRpc: node as never, registry, mint: MINT, recordDate: '2026-01-06',
+    })
+    expect(snap.sourcesAgree).toBe(true)
+    expect(snap.merkleRoot).toMatch(/^[0-9a-f]{64}$/)
+    expect(snap.holders).toEqual([{ owner: 'alice', rawAmount: '1000', shares: '0.001000' }])
+    expect(snap.excluded).toEqual([{ address: POOL, reason: 'program-owned' }])
+  })
+})

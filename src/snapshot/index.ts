@@ -45,10 +45,12 @@ export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot>
   const multiplier = await readMultiplierAtSlot(archiveRpc, mint, slot, blockTime)
   const replayed = await replayHolders(rpc, mint, slot)
 
-  // The strongest correctness check available, and the ONLY detector for the known
-  // enumeration gap: signatures are enumerated from the mint's address, which catches
-  // `transferChecked` (the mint is in its account list) but can miss a plain `transfer`.
-  // If any holder was missed, the replayed balances will not sum to total supply.
+  // Signatures are enumerated from the mint's address, which catches `transferChecked`
+  // (the mint is in its account list) but can miss a plain `transfer`. The supply sum
+  // catches what MOVES the total: a mint or a burn the walk never saw. It does NOT
+  // catch a missed transfer — a transfer misattributes supply between two owners and
+  // leaves the sum unchanged — so it is not, on its own, a detector for a missing
+  // holder. That case is caught by reconcile below, through the SENDER's balance.
   // Computed BEFORE exclusions, because pools and burn addresses hold real supply.
   const replayedTotal = [...replayed.values()].reduce((sum, amount) => sum + amount, 0n)
   const supply = await archiveRpc.callHistorical('getTokenSupply', [mint], slot, TokenSupplySchema)
@@ -56,10 +58,13 @@ export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot>
   const supplyMatches = replayedTotal === expectedTotal
 
   const { eligible, excluded } = await classifyOwners(archiveRpc, [...replayed.keys()], slot)
-  const eligibleSet = new Set(eligible)
-  const filtered = new Map([...replayed].filter(([owner]) => eligibleSet.has(owner)))
 
-  const result = await reconcile(filtered, owner => archiveBalanceAtSlot(archiveRpc, mint, owner, slot))
+  // Reconcile the WHOLE replay, excluded owners included. Narrowing to the eligible
+  // set first would leave pool PDAs unchecked, and a missed plain `transfer` out of a
+  // pool is exactly the case that survives the supply check: the pool's balance is
+  // then too high and the wallet that received the tokens is absent from the holder
+  // set entirely. Checking the sender is the only way that shows up at all.
+  const result = await reconcile(replayed, owner => archiveBalanceAtSlot(archiveRpc, mint, owner, slot))
 
   const supplyReport = {
     expected: expectedTotal.toString(),
@@ -68,8 +73,10 @@ export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot>
   }
 
   // A root is published only when BOTH detectors pass. They catch different things:
-  // reconcile catches a WRONG balance (per owner), the supply check catches a MISSING
-  // holder (set level). Either failure means the holder set is not the truth.
+  // reconcile catches a WRONG balance for any owner the replay saw — which is how a
+  // missed transfer surfaces, at the sender — and the supply check catches a mint or
+  // burn that moved the total without appearing in the replay. Either failure means
+  // the holder set is not the truth.
   if (!result.agree || !supplyMatches) {
     return {
       mint, slot, blockTime, decimals: asset.decimals, multiplier,
@@ -77,8 +84,12 @@ export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot>
     }
   }
 
+  // Exclusions decide only who is PUBLISHED; they never narrow what was checked.
+  const eligibleSet = new Set(eligible)
   const rows = sortLeaves(
-    [...result.holders].map(([owner, raw]) => ({ owner, rawAmount: raw.toString() })),
+    [...result.holders]
+      .filter(([owner]) => eligibleSet.has(owner))
+      .map(([owner, raw]) => ({ owner, rawAmount: raw.toString() })),
   )
   const holders: HolderBalance[] = rows.map(r => ({
     owner: r.owner,
