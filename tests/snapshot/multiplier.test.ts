@@ -11,7 +11,9 @@ describe('pickMultiplier', () => {
   })
 
   it('treats a zero effective timestamp as already in force', () => {
-    expect(pickMultiplier({ multiplier: 1, newMultiplier: 1, newMultiplierEffectiveTimestamp: 0 }, 1)).toBe(1)
+    // The two multipliers must differ, or this test passes under either branch
+    // and guards nothing.
+    expect(pickMultiplier({ multiplier: 1, newMultiplier: 4, newMultiplierEffectiveTimestamp: 0 }, 1)).toBe(4)
   })
 })
 
