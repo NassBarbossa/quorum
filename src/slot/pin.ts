@@ -56,6 +56,9 @@ const BlocksSchema = z.array(z.number().int())
 
 export type PinOptions = { lowerBound?: number }
 
+/** getBlocks accepts a range of at most 500,000 slots. */
+const MAX_BLOCK_RANGE = 500_000
+
 /**
  * Highest slot at or below `slot` that actually produced a block.
  *
@@ -63,18 +66,23 @@ export type PinOptions = { lowerBound?: number }
  * skips slots routinely and can skip hundreds consecutively under congestion or
  * an outage; a fixed probe window that gave up after N slots would make the
  * caller discard a range that still held the answer, returning a wrong slot with
- * no error. Every weight in the snapshot hangs off this number, so the window
- * widens until a block is found or `floor` is reached. A null return therefore
+ * no error. Every weight in the snapshot hangs off this number, so the search
+ * continues until a block is found or `floor` is reached. A null return therefore
  * means there is genuinely no block in [floor, slot].
+ *
+ * The window widens up to the 500,000-slot maximum and then slides downward in
+ * disjoint ranges rather than widening further, which a provider would reject.
+ * Ranges are scanned from the top, so the first block found is still the highest.
  */
 async function highestBlockAtOrBelow(
   rpc: RpcClient, slot: number, floor: number,
 ): Promise<{ slot: number; time: number } | null> {
   if (slot < floor) return null
+  let end = slot
   let window = 1_000
   for (;;) {
-    const start = Math.max(floor, slot - window)
-    const blocks = await rpc.call('getBlocks', [start, slot], BlocksSchema)
+    const start = Math.max(floor, end - window + 1)
+    const blocks = await rpc.call('getBlocks', [start, end], BlocksSchema)
     const found = blocks.at(-1)
     if (found !== undefined) {
       const time = await rpc.call('getBlockTime', [found], BlockTimeSchema)
@@ -84,7 +92,8 @@ async function highestBlockAtOrBelow(
       return { slot: found, time }
     }
     if (start === floor) return null
-    window *= 8
+    end = start - 1
+    window = Math.min(window * 8, MAX_BLOCK_RANGE)
   }
 }
 

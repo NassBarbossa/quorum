@@ -72,6 +72,31 @@ describe('pinSlot', () => {
     await expect(pinSlot(rpc as never, future, { lowerBound: 0 })).rejects.toThrow(/future|not yet/i)
   })
 
+  it('never asks getBlocks for more than 500,000 slots at a time', async () => {
+    // getBlocks rejects a range wider than 500,000 slots, so a search that only ever
+    // widened would start failing outright on a long gap. It slides instead: disjoint
+    // ranges, scanned downward, so the first block found is still the highest one.
+    // Only slots 0 and 3,000,000 produced a block, and the target sits just after 0.
+    const ranges: [number, number][] = []
+    const blocks = [0, 3_000_000]
+    const rpc = {
+      call: vi.fn(async (method: string, params: unknown[]) => {
+        if (method === 'getSlot') return 3_000_000
+        if (method === 'getBlocks') {
+          const [start, end] = params as [number, number]
+          ranges.push([start, end])
+          return blocks.filter(b => b >= start && b <= end)
+        }
+        if (method === 'getBlockTime') return 1_700_000_000 + (params[0] as number)
+        throw new Error(`unexpected ${method}`)
+      }),
+    }
+    const target = new Date((1_700_000_000 + 1) * 1000)
+    expect(await pinSlot(rpc as never, target, { lowerBound: 0 })).toBe(0)
+    expect(ranges.length).toBeGreaterThan(5)   // it really did have to slide
+    for (const [start, end] of ranges) expect(end - start + 1).toBeLessThanOrEqual(500_000)
+  })
+
   it('throws rather than returning slot 0 when no block sits at or before the target', async () => {
     // Every slot in range is skipped except the tip, whose time is after the target.
     const rpc = chainMock({ tip: 1_000, gaps: [[0, 999]] })

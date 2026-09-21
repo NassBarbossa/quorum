@@ -35,15 +35,17 @@ export async function takeSnapshot(opts: TakeSnapshotOptions): Promise<Snapshot>
   }
 
   const instant = recordDateToInstant(recordDate)
-  const slot = await pinSlot(rpc, instant)
+  const slot = await pinSlot(archiveRpc, instant)
   const blockTime = await rpc.call('getBlockTime', [slot], BlockTimeSchema)
   if (blockTime === null) throw new Error(`Slot ${slot} has no block time; cannot anchor the multiplier`)
 
-  // Multiplier and account ownership are historical reads: they must reflect the
-  // snapshot slot, so they go through the archive client. Signature and transaction
-  // history is not state, so the replay uses the standard client.
+  // Everything the snapshot is built from goes through the archive client. State at a
+  // past slot needs an archive by definition — and so does past *history*: a standard
+  // node keeps only a rolling ledger window, so it retains neither the old signature
+  // list nor the old blocks that pinSlot and the replay walk. Saying that transaction
+  // history is not state was beside the point; a non-archival node has neither.
   const multiplier = await readMultiplierAtSlot(archiveRpc, mint, slot, blockTime)
-  const replayed = await replayHolders(rpc, mint, slot)
+  const replayed = await replayHolders(archiveRpc, mint, slot)
 
   // Signatures are enumerated from the mint's address, which catches `transferChecked`
   // (the mint is in its account list) but can miss a plain `transfer`. The supply sum

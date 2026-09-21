@@ -19,7 +19,9 @@ describe('takeSnapshot', () => {
   })
 })
 
-/** Standard client: chain tip, block times, and one holder (alice, 1000 raw) at slot 900. */
+/** Ledger reads: chain tip, block times, and one holder (alice, 1000 raw) at slot 900.
+ *  These go to the archive client too — a standard node keeps no old blocks — so the
+ *  tests hand the same object to both `rpc` and `archiveRpc`. */
 function standardMock() {
   return {
     call: vi.fn(async (method: string, params: unknown[]) => {
@@ -67,32 +69,30 @@ function archiveMock(opts: { balance: string; supply: string }) {
 
 describe('takeSnapshot detectors', () => {
   it('returns sourcesAgree=false and a null root when the sources disagree', async () => {
-    const rpc = standardMock()
     // 999 against the replay's 1000 — the sources must refuse to agree. Supply is
     // set to 1000 so this test isolates the reconcile failure from the supply check.
-    const archiveRpc = archiveMock({ balance: '999', supply: '1000' })
-    const snap = await takeSnapshot({ rpc: rpc as never, archiveRpc: archiveRpc as never, registry, mint: MINT, recordDate: '2026-01-06' })
+    const node = { ...standardMock(), ...archiveMock({ balance: '999', supply: '1000' }) }
+    const snap = await takeSnapshot({ rpc: node as never, archiveRpc: node as never, registry, mint: MINT, recordDate: '2026-01-06' })
     expect(snap.sourcesAgree).toBe(false)
     expect(snap.supply.matches).toBe(true)
     expect(snap.merkleRoot).toBeNull()
   })
 
   it('withholds the root when the replayed balances do not sum to total supply', async () => {
-    // Both sources agree on alice's 1000, but the mint says 5000 exist. Some holder
-    // was never enumerated, so the holder set is not the truth and no root is published.
-    // This is the only detector for a plain `transfer` the mint's signature list missed.
-    const rpc = standardMock()
-    const archiveRpc = archiveMock({ balance: '1000', supply: '5000' })
-    const snap = await takeSnapshot({ rpc: rpc as never, archiveRpc: archiveRpc as never, registry, mint: MINT, recordDate: '2026-01-06' })
+    // Both sources agree on alice's 1000, but the mint says 5000 exist. Supply moved
+    // without the replay seeing it — a mint or a burn the signature walk missed — so
+    // the holder set is not the truth and no root is published. (A missed *transfer*
+    // leaves this sum untouched; reconcile catches that one, at the sender.)
+    const node = { ...standardMock(), ...archiveMock({ balance: '1000', supply: '5000' }) }
+    const snap = await takeSnapshot({ rpc: node as never, archiveRpc: node as never, registry, mint: MINT, recordDate: '2026-01-06' })
     expect(snap.sourcesAgree).toBe(true)
     expect(snap.supply).toEqual({ expected: '5000', replayed: '1000', matches: false })
     expect(snap.merkleRoot).toBeNull()
   })
 
   it('publishes a root when both sources agree and supply reconciles', async () => {
-    const rpc = standardMock()
-    const archiveRpc = archiveMock({ balance: '1000', supply: '1000' })
-    const snap = await takeSnapshot({ rpc: rpc as never, archiveRpc: archiveRpc as never, registry, mint: MINT, recordDate: '2026-01-06' })
+    const node = { ...standardMock(), ...archiveMock({ balance: '1000', supply: '1000' }) }
+    const snap = await takeSnapshot({ rpc: node as never, archiveRpc: node as never, registry, mint: MINT, recordDate: '2026-01-06' })
     expect(snap.sourcesAgree).toBe(true)
     expect(snap.supply.matches).toBe(true)
     expect(snap.merkleRoot).toMatch(/^[0-9a-f]{64}$/)
