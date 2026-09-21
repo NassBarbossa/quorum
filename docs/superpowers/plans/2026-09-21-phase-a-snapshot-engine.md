@@ -1595,7 +1595,7 @@ export async function archiveBalanceAtSlot(
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/snapshot/sources/archive.test.ts`
-Expected: PASS, 5 tests
+Expected: PASS, 3 tests
 
 - [ ] **Step 5: Commit**
 
