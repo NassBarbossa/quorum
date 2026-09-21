@@ -66,4 +66,39 @@ describe('replayHolders', () => {
     expect(holders.get('alice')).toBe(1_000n)  // sig3 is past the target slot
     expect(holders.get('bob')).toBe(500n)
   })
+
+  it('applies same-slot transactions oldest-first, not in RPC order', async () => {
+    // getSignaturesForAddress returns newest first, including within one slot, and
+    // a slot holds many transactions. Post-balances are absolute, so the newest
+    // transaction in a slot must be applied LAST or an older one overwrites it.
+    const signatures = [
+      { signature: 'newer', slot: 100 },
+      { signature: 'older', slot: 100 },
+    ]
+    const txs: Record<string, unknown> = {
+      older: { slot: 100, meta: { postTokenBalances: [{ mint: MINT, owner: 'alice', uiTokenAmount: { amount: '111' } }] } },
+      newer: { slot: 100, meta: { postTokenBalances: [{ mint: MINT, owner: 'alice', uiTokenAmount: { amount: '999' } }] } },
+    }
+    const rpc = {
+      call: vi.fn(async (method: string, params: unknown[]) => {
+        if (method === 'getSignaturesForAddress') {
+          return (params[1] as { before?: string }).before ? [] : signatures
+        }
+        if (method === 'getTransaction') return txs[params[0] as string]
+        throw new Error(`unexpected ${method}`)
+      }),
+    }
+    const holders = await replayHolders(rpc as never, MINT, 200)
+    expect(holders.get('alice')).toBe(999n)
+  })
+
+  it('throws rather than looping when the endpoint ignores the before cursor', async () => {
+    const rpc = {
+      call: vi.fn(async (method: string) => {
+        if (method === 'getSignaturesForAddress') return [{ signature: 'same', slot: 10 }]
+        throw new Error(`unexpected ${method}`)
+      }),
+    }
+    await expect(replayHolders(rpc as never, MINT, 100)).rejects.toThrow(/ignoring "before"|same page twice/i)
+  })
 })

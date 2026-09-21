@@ -70,12 +70,26 @@ export async function replayHolders(
     )
     if (page.length === 0) break
     signatures.push(...page)
-    before = page[page.length - 1]!.signature
+    const nextBefore = page[page.length - 1]!.signature
+    if (nextBefore === before) {
+      // The endpoint returned the same page again, so it is ignoring the cursor.
+      // Without this guard the loop runs forever and the snapshot never completes.
+      throw new Error(
+        `getSignaturesForAddress returned the same page twice at cursor ${before}; ` +
+        `the endpoint is ignoring "before". Refusing to loop.`
+      )
+    }
+    before = nextBefore
   }
 
-  // getSignaturesForAddress returns newest first; replay needs oldest first.
+  // getSignaturesForAddress returns newest first — including *within* a single slot,
+  // which holds many transactions. Array.sort is stable, so sorting by slot alone
+  // would preserve that newest-first order inside each slot and, because
+  // post-balances are absolute, let an older transaction overwrite a newer one.
+  // Reverse first, then the stable sort keeps each slot's transactions oldest-first.
   const ordered = signatures
     .filter(s => s.slot <= slot)
+    .reverse()
     .sort((a, b) => a.slot - b.slot)
 
   const state = new Map<string, bigint>()
