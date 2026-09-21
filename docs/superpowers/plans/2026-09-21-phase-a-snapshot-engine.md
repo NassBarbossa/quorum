@@ -2154,7 +2154,10 @@ function standardMock() {
         for (let s = start; s <= end; s++) out.push(s)
         return out
       }
-      if (method === 'getBlockTime') return 1_767_740_400 // 2026-01-06T22:00:00Z
+      // 17:00 America/New_York on the record date. January is EST (UTC-5), so 22:00Z.
+      // This must equal recordDateToInstant('2026-01-06'), or pinSlot finds no candidate
+      // at or before the target and throws instead of returning a slot.
+      if (method === 'getBlockTime') return 1_767_736_800
       if (method === 'getSignaturesForAddress') {
         return (params[1] as { before?: string }).before ? [] : [{ signature: 'sig1', slot: 900 }]
       }
